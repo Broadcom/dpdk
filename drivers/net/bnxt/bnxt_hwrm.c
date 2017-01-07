@@ -137,9 +137,20 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg, uint32_t msg_len)
 			return rc; \
 		} \
 		if (resp->error_code) { \
-			rc = rte_le_to_cpu_16(resp->error_code); \
-			RTE_LOG(ERR, PMD, "%s error %d\n", __func__, rc); \
-			return rc; \
+			if (resp->resp_len >= 16) { \
+				struct hwrm_err_output *tmp_hwrm_err_output = (void *)resp; \
+				rc = rte_le_to_cpu_16(resp->error_code); \
+				RTE_LOG(ERR, PMD, "%s error %d:%d:%08x:%04x\n", __func__, \
+					rc, tmp_hwrm_err_output->cmd_err, \
+					rte_le_to_cpu_32(tmp_hwrm_err_output->opaque_0), \
+					rte_le_to_cpu_16(tmp_hwrm_err_output->opaque_1)); \
+				return rc; \
+			} \
+			else { \
+				rc = rte_le_to_cpu_16(resp->error_code); \
+				RTE_LOG(ERR, PMD, "%s error %d\n", __func__, rc); \
+				return rc; \
+			} \
 		} \
 	}
 
