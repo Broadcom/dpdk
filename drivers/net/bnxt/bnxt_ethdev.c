@@ -487,6 +487,20 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		rc = -1;
 		goto error;
 	}
+	rc = bnxt_hwrm_func_qcaps(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm query capability failure rc: %x\n", rc);
+		rc = -1;
+		goto error;
+	}
+	if (BNXT_PF(bp)) {
+		if (bp->pf.active_vfs) {
+			// TODO: Deallocate VF resources
+		}
+		if (bp->pdev->max_vfs) {
+			bnxt_hwrm_allocate_vfs(bp, bp->pdev->max_vfs);
+		}
+	}
 
 	rc = bnxt_setup_int(bp);
 	if (rc)

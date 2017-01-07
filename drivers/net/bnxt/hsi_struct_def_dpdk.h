@@ -88,6 +88,7 @@ struct ctx_hw_stats64 {
 #define HWRM_FUNC_RESET			(UINT32_C(0x11))
 #define HWRM_FUNC_QCAPS			(UINT32_C(0x15))
 #define HWRM_FUNC_QCFG			(UINT32_C(0x16))
+#define HWRM_FUNC_CFG			(UINT32_C(0x17))
 #define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
 #define HWRM_PORT_PHY_CFG		(UINT32_C(0x20))
@@ -2261,6 +2262,385 @@ struct hwrm_func_qcfg_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_func_cfg */
+/*
+ * Description: This command allows configuration of a PF by the corresponding
+ * PF driver. This command also allows configuration of a child VF by its parent
+ * PF driver. The input FID value is used to indicate what function is being
+ * configured. This allows a PF driver to configure the PF owned by itself or a
+ * virtual function that is a child of the PF. This command allows to reserve
+ * resources for a VF by its parent PF. To reverse the process, the command
+ * should be called with all enables flags cleared for resources. This will free
+ * allocated resources for the VF and return them to the resource pool. If this
+ * command is requested by a VF driver to configure or reserve resources, then
+ * the HWRM shall fail this command. If default MAC address and/or VLAN are
+ * provided in this command, then the HWRM shall set up appropriate MAC/VLAN
+ * filters for the function that is being configured. If source properties
+ * checks are enabled and default MAC address and/or IP address are provided in
+ * this command, then the HWRM shall set appropriate source property checks
+ * based on provided MAC and/or IP addresses. The parent PF driver should not
+ * set MTU/MRU for a VF using this command. This is to allow MTU/MRU setting by
+ * the VF driver. If the MTU or MRU for a VF is set by the PF driver, then the
+ * HWRM should ignore it. A function's MTU/MRU should be set prior to allocating
+ * RX VNICs or TX rings. A PF driver calls hwrm_func_cfg to allocate resources
+ * for itself or its children VFs. All function drivers shall call hwrm_func_cfg
+ * to reserve resources. A request to hwrm_func_cfg may not be fully granted;
+ * that is, a request for resources may be larger than what can be supported by
+ * the device and the HWRM will allocate the best set of resources available,
+ * but that may be less than requested. If all the amounts requested could not
+ * be fulfilled, the HWRM shall allocate what it could and return a status code
+ * of success. A function driver should call hwrm_func_qcfg immediately after
+ * hwrm_func_cfg to determine what resources were assigned to the configured
+ * function. A call by a PF driver to hwrm_func_cfg to allocate resources for
+ * itself shall only allocate resources for the PF driver to use, not for its
+ * children VFs. Likewise, a call to hwrm_func_qcfg shall return the resources
+ * available for the PF driver to use, not what is available to its children
+ * VFs.
+ */
+/* Input (88 bytes) */
+struct hwrm_func_cfg_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint16_t fid;
+    /*
+     * Function ID of the function that is being configured. If set to
+     * 0xFF... (All Fs), then the the configuration is for the requesting
+     * function.
+     */
+    uint8_t unused_0;
+    uint8_t unused_1;
+    uint32_t flags;
+    /*
+     * When this bit is '1', the function is requested to be put in the
+     * promiscuous mode.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_PROM_MODE                (UINT32_C(0x1))
+    /*
+     * When this bit is '1', the function is enabled with source MAC address
+     * check. This is an anti-spoofing check. If this flag is set, then the
+     * function shall be configured to allow transmission of frames with the
+     * source MAC address that is configured for this function.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK       (UINT32_C(0x2))
+    /*
+     * When this bit is '1', the function is enabled with source IP address
+     * check. This is an anti-spoofing check. If this flag is set, then the
+     * function shall be configured to allow transmission of frames with the
+     * source IP address that is configured for this function.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_SRC_IP_ADDR_CHECK        (UINT32_C(0x4))
+    /*
+     * When this bit is set to '1', the function shall be configured with
+     * VLAN priority match. If the VLAN PRI of a packet originated from this
+     * function does not match, then the packet shall be discarded.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_VLAN_PRI_MATCH           (UINT32_C(0x8))
+    /*
+     * When this bit is set to '1', the function shall be configured to
+     * check for VLAN priority match. If the VLAN PRI of a packet originated
+     * from this function does not match, then the default VLAN PRI shall be
+     * used.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_DFLT_PRI_NOMATCH         (UINT32_C(0x10))
+    /*
+     * When this bit is set to '1', the function shall be configured to not
+     * allow the transmission of pause frames. PAUSE frames use 48-bit
+     * destination multicast MAC address 01-80-C2-00-00-01.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_DISABLE_PAUSE            (UINT32_C(0x20))
+    /*
+     * When this bit is set to '1', the function shall be configured to not
+     * allow the transmission of Spanning Tree Protocol (STP) frames. STP
+     * frames use Ethertype 0x0802 and 48-bit destination multicast MAC
+     * address 01-80-C2-00-00-00 and 01-80-C2-00-00-08 for 802.1D and
+     * 802.1ad respectively.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_DISABLE_STP              (UINT32_C(0x40))
+    /*
+     * When this bit is set to '1', the function shall be configured to not
+     * allow the transmission of Link Layer Discovery Protocol (LLDP)
+     * frames. LLDP frames use Ethertype 0x88CC and 48-bit destination
+     * multicast MAC address 01-80-C2-00-00-00 or 01-80-C2-00-00-03 or
+     * 01-80-C2-00-00-0E.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_DISABLE_LLDP             (UINT32_C(0x80))
+    /*
+     * When this bit is set to '1', the function shall be configured to not
+     * allow the transmission of Precision Time Protocol (PTP) v2 frames.
+     * PTP frames use Ethertype 0x88F7 and 48-bit destination multicast MAC
+     * address 01-80-C2-00-00-0E or 01-1B-19-00-00-00.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_DISABLE_PTPV2            (UINT32_C(0x100))
+    /*
+     * Standard TX Ring mode is used for the allocation of TX ring and
+     * underlying scheduling resources that allow bandwidth reservation and
+     * limit settings on the queried function. If set to 1, then standard TX
+     * ring mode is requested to be enabled on the function being
+     * configured. If set to 0, then the standard TX ring mode is requested
+     * to be disabled on the function being configured. In this extended TX
+     * ring resource mode, the minimum and maximum bandwidth settings are
+     * not supported to allow the allocation of TX rings to span multiple
+     * scheduler nodes.
+     */
+    #define HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE         (UINT32_C(0x200))
+    uint32_t enables;
+    /* This bit must be '1' for the mtu field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_MTU                    (UINT32_C(0x1))
+    /* This bit must be '1' for the mru field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_MRU                    (UINT32_C(0x2))
+    /* This bit must be '1' for the num_rsscos_ctxs field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS        (UINT32_C(0x4))
+    /* This bit must be '1' for the num_cmpl_rings field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_CMPL_RINGS         (UINT32_C(0x8))
+    /* This bit must be '1' for the num_tx_rings field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_TX_RINGS           (UINT32_C(0x10))
+    /* This bit must be '1' for the num_rx_rings field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_RX_RINGS           (UINT32_C(0x20))
+    /* This bit must be '1' for the num_l2_ctxs field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_L2_CTXS            (UINT32_C(0x40))
+    /* This bit must be '1' for the num_vnics field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_VNICS              (UINT32_C(0x80))
+    /* This bit must be '1' for the num_stat_ctxs field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_STAT_CTXS          (UINT32_C(0x100))
+    /* This bit must be '1' for the dflt_mac_addr field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR          (UINT32_C(0x200))
+    /* This bit must be '1' for the dflt_vlan field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_VLAN              (UINT32_C(0x400))
+    /* This bit must be '1' for the dflt_ip_addr field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_IP_ADDR           (UINT32_C(0x800))
+    /* This bit must be '1' for the min_bw field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_MIN_BW                 (UINT32_C(0x1000))
+    /* This bit must be '1' for the max_bw field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_MAX_BW                 (UINT32_C(0x2000))
+    /* This bit must be '1' for the async_event_cr field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_ASYNC_EVENT_CR         (UINT32_C(0x4000))
+    /*
+     * This bit must be '1' for the vlan_antispoof_mode field to be
+     * configured.
+     */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_VLAN_ANTISPOOF_MODE    (UINT32_C(0x8000))
+    /*
+     * This bit must be '1' for the allowed_vlan_pris field to be
+     * configured.
+     */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_ALLOWED_VLAN_PRIS      (UINT32_C(0x10000))
+    /* This bit must be '1' for the evb_mode field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_EVB_MODE               (UINT32_C(0x20000))
+    /*
+     * This bit must be '1' for the num_mcast_filters field to be
+     * configured.
+     */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_MCAST_FILTERS      (UINT32_C(0x40000))
+    /* This bit must be '1' for the num_hw_ring_grps field to be configured. */
+    #define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS       (UINT32_C(0x80000))
+    uint16_t mtu;
+    /*
+     * The maximum transmission unit of the function. The HWRM should make
+     * sure that the mtu of the function does not exceed the mtu of the
+     * physical port that this function is associated with. In addition to
+     * configuring mtu per function, it is possible to configure mtu per
+     * transmit ring. By default, the mtu of each transmit ring associated
+     * with a function is equal to the mtu of the function. The HWRM should
+     * make sure that the mtu of each transmit ring that is assigned to a
+     * function has a valid mtu.
+     */
+    uint16_t mru;
+    /*
+     * The maximum receive unit of the function. The HWRM should make sure
+     * that the mru of the function does not exceed the mru of the physical
+     * port that this function is associated with. In addition to
+     * configuring mru per function, it is possible to configure mru per
+     * vnic. By default, the mru of each vnic associated with a function is
+     * equal to the mru of the function. The HWRM should make sure that the
+     * mru of each vnic that is assigned to a function has a valid mru.
+     */
+    uint16_t num_rsscos_ctxs;
+    /* The number of RSS/COS contexts requested for the function. */
+    uint16_t num_cmpl_rings;
+    /*
+     * The number of completion rings requested for the function. This does
+     * not include the rings allocated to any children functions if any.
+     */
+    uint16_t num_tx_rings;
+    /*
+     * The number of transmit rings requested for the function. This does
+     * not include the rings allocated to any children functions if any.
+     */
+    uint16_t num_rx_rings;
+    /*
+     * The number of receive rings requested for the function. This does not
+     * include the rings allocated to any children functions if any.
+     */
+    uint16_t num_l2_ctxs;
+    /* The requested number of L2 contexts for the function. */
+    uint16_t num_vnics;
+    /* The requested number of vnics for the function. */
+    uint16_t num_stat_ctxs;
+    /* The requested number of statistic contexts for the function. */
+    uint16_t num_hw_ring_grps;
+    /*
+     * The number of HW ring groups that should be reserved for this
+     * function.
+     */
+    uint8_t dflt_mac_addr[6];
+    /* The default MAC address for the function being configured. */
+    uint16_t dflt_vlan;
+    /*
+     * The default VLAN for the function being configured. This field's
+     * format is same as 802.1Q Tag's Tag Control Information (TCI) format
+     * that includes both Priority Code Point (PCP) and VLAN Identifier
+     * (VID).
+     */
+    uint32_t dflt_ip_addr[4]; /* big endian */
+    /*
+     * The default IP address for the function being configured. This
+     * address is only used in enabling source property check.
+     */
+    uint32_t min_bw;
+    /*
+     * Minimum BW allocated for this function. The HWRM will translate this
+     * value into byte counter and time interval used for the scheduler
+     * inside the device.
+     */
+    /* Bandwidth value */
+    #define HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_MASK           (UINT32_C(0xfffffff))
+    #define HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_SFT            (UINT32_C(0))
+    /* Reserved */
+    #define HWRM_FUNC_CFG_INPUT_MIN_BW_RSVD                    (UINT32_C(0x10000000))
+    /* bw_value_unit is 3 b */
+    #define HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_UNIT_MASK      (UINT32_C(0xe0000000))
+    #define HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_UNIT_SFT       (UINT32_C(29))
+        /* Value is in Mbps */
+        #define HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_UNIT_MBPS     (UINT32_C(0))
+        /* Value is in 1/100th of a percentage of total bandwidth. */
+        #define HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_UNIT_PERCENT1_100 (UINT32_C(0x1) << 29)
+        /* Invalid unit */
+        #define HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_UNIT_INVALID  (UINT32_C(0x7) << 29)
+        #define HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_UNIT_LAST    HWRM_FUNC_CFG_INPUT_MIN_BW_BW_VALUE_UNIT_INVALID
+    uint32_t max_bw;
+    /*
+     * Maximum BW allocated for this function. The HWRM will translate this
+     * value into byte counter and time interval used for the scheduler
+     * inside the device.
+     */
+    /* Bandwidth value */
+    #define HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_MASK           (UINT32_C(0xfffffff))
+    #define HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_SFT            (UINT32_C(0))
+    /* Reserved */
+    #define HWRM_FUNC_CFG_INPUT_MAX_BW_RSVD                    (UINT32_C(0x10000000))
+    /* bw_value_unit is 3 b */
+    #define HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_UNIT_MASK      (UINT32_C(0xe0000000))
+    #define HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_UNIT_SFT       29
+        /* Value is in Mbps */
+        #define HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_UNIT_MBPS     (UINT32_C(0))
+        /* Value is in 1/100th of a percentage of total bandwidth. */
+        #define HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_UNIT_PERCENT1_100 (UINT32_C(0x1) << 29)
+        /* Invalid unit */
+        #define HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_UNIT_INVALID  (UINT32_C(0x7) << 29)
+        #define HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_UNIT_LAST    HWRM_FUNC_CFG_INPUT_MAX_BW_BW_VALUE_UNIT_INVALID
+    uint16_t async_event_cr;
+    /*
+     * ID of the target completion ring for receiving asynchronous event
+     * completions. If this field is not valid, then the HWRM shall use the
+     * default completion ring of the function that is being configured as
+     * the target completion ring for providing any asynchronous event
+     * completions for that function. If this field is valid, then the HWRM
+     * shall use the completion ring identified by this ID as the target
+     * completion ring for providing any asynchronous event completions for
+     * the function that is being configured.
+     */
+    uint8_t vlan_antispoof_mode;
+    /* VLAN Anti-spoofing mode. */
+        /* No VLAN anti-spoofing checks are enabled */
+        #define HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_NOCHECK   0x0UL
+        /* Validate VLAN against the configured VLAN(s) */
+        #define HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_VALIDATE_VLAN 0x1UL
+        /* Insert VLAN if it does not exist, otherwise discard */
+        #define HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_INSERT_IF_VLANDNE 0x2UL
+        /* Insert VLAN if it does not exist, override VLAN if it exists */
+        #define HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_INSERT_OR_OVERRIDE_VLAN 0x3UL
+    uint8_t allowed_vlan_pris;
+    /*
+     * This bit field defines VLAN PRIs that are allowed on this function.
+     * If nth bit is set, then VLAN PRI n is allowed on this function.
+     */
+    uint8_t evb_mode;
+    /*
+     * The HWRM shall allow a PF driver to change EVB mode for the partition
+     * it belongs to. The HWRM shall not allow a VF driver to change the EVB
+     * mode. The HWRM shall take into account the switching of EVB mode from
+     * one to another and reconfigure hardware resources as appropriately.
+     * The switching from VEB to VEPA mode requires the disabling of the
+     * loopback traffic. Additionally, source knock outs are handled
+     * differently in VEB and VEPA modes.
+     */
+        /* No Edge Virtual Bridging (EVB) */
+        #define HWRM_FUNC_CFG_INPUT_EVB_MODE_NO_EVB               0x0UL
+        /* Virtual Ethernet Bridge (VEB) */
+        #define HWRM_FUNC_CFG_INPUT_EVB_MODE_VEB                  0x1UL
+        /* Virtual Ethernet Port Aggregator (VEPA) */
+        #define HWRM_FUNC_CFG_INPUT_EVB_MODE_VEPA                 0x2UL
+    uint8_t unused_2;
+    uint16_t num_mcast_filters;
+    /*
+     * The number of multicast filters that should be reserved for this
+     * function on the RX side.
+     */
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_func_cfg_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint32_t unused_0;
+    uint8_t unused_1;
+    uint8_t unused_2;
+    uint8_t unused_3;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+} __attribute__((packed));
 /* hwrm_func_drv_rgtr */
 /*
  * Description: This command is used by the function driver to register its

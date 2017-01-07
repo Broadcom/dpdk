@@ -295,6 +295,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		pf->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
 		pf->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 		pf->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
+		pf->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 		pf->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
 		pf->max_vfs = rte_le_to_cpu_16(resp->max_vfs);
 	} else {
@@ -308,6 +309,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		vf->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
 		vf->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 		vf->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
+		vf->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 	}
 
 	return rc;
@@ -343,7 +345,8 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp, uint32_t flags,
 	HWRM_PREP(req, FUNC_DRV_RGTR, -1, resp);
 	req.flags = flags;
 	req.enables = HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VER |
-			HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_ASYNC_EVENT_FWD;
+			HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_ASYNC_EVENT_FWD |
+			HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VF_INPUT_FWD;
 	req.ver_maj = RTE_VER_YEAR;
 	req.ver_min = RTE_VER_MONTH;
 	req.ver_upd = RTE_VER_MINOR;
@@ -1516,6 +1519,11 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 		/* Hard Coded.. 0xfff VLAN ID mask */
 		vf->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
 	}
+	else {
+		struct bnxt_pf_info *pf = &bp->pf;
+
+		pf->active_vfs = rte_le_to_cpu_16(resp->alloc_vfs);
+	}
 
 	switch (resp->port_partition_type) {
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:
@@ -1526,6 +1534,84 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 	default:
 		bp->port_partition_type = 0;
 		break;
+	}
+
+	return rc;
+}
+
+int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_qcfg_input qreq = {0};
+	struct hwrm_func_qcfg_output *qresp = bp->hwrm_cmd_resp_addr;
+	int i;
+	int rc = 0;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to allcoate VFs on a VF!\n");
+		return -1;
+	}
+
+	bp->pf.active_vfs = 0;
+
+	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_MTU |
+			HWRM_FUNC_CFG_INPUT_ENABLES_MRU |
+			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS |
+			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_STAT_CTXS |
+			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_CMPL_RINGS |
+			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_TX_RINGS |
+			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_RX_RINGS |
+			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_L2_CTXS |
+			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_VNICS |
+			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
+
+	req.mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
+	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
+	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->pf.max_rsscos_ctx / (num_vfs + 1));
+	req.num_stat_ctxs = rte_cpu_to_le_16(bp->pf.max_stat_ctx / (num_vfs + 1));
+	req.num_cmpl_rings = rte_cpu_to_le_16(bp->pf.max_cp_rings / (num_vfs + 1));
+	req.num_tx_rings = rte_cpu_to_le_16(bp->pf.max_tx_rings / (num_vfs + 1));
+	req.num_rx_rings = rte_cpu_to_le_16(bp->pf.max_rx_rings / (num_vfs + 1));
+	req.num_l2_ctxs = rte_cpu_to_le_16(bp->pf.max_l2_ctx / (num_vfs + 1));
+	req.num_vnics = rte_cpu_to_le_16(bp->pf.max_vnics / (num_vfs + 1));
+	req.num_hw_ring_grps = rte_cpu_to_le_16(bp->max_ring_grps / (num_vfs + 1));
+
+	for (i = 0; i < num_vfs; i++) {
+		req.enables &= ~rte_le_to_cpu_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
+		/* Check for zero MAC address */
+		HWRM_PREP(qreq, FUNC_QCFG, -1, qresp);
+		qreq.fid = rte_cpu_to_le_16(bp->pf.first_vf_id + i);
+		rc = bnxt_hwrm_send_message(bp, &qreq, sizeof(req));
+		if (rc)
+			RTE_LOG(ERR, PMD, "hwrm_func_cfg failed rc:%d\n", rc);
+		else if (resp->error_code) {
+			rc = rte_le_to_cpu_16(resp->error_code);
+			RTE_LOG(ERR, PMD, "hwrm_finc_cfg error %d\n", rc);
+		}
+		else {
+			if (memcmp(qresp->mac_address, "\x00\x00\x00\x00\x00", 6) == 0) {
+				req.enables |= rte_le_to_cpu_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
+				eth_random_addr(req.dflt_mac_addr);
+			}
+			else {
+				memcpy(req.dflt_mac_addr, qresp->mac_address, sizeof(qresp->mac_address));
+			}
+		}
+		HWRM_PREP(req, FUNC_CFG, -1, resp);
+		req.fid = rte_cpu_to_le_16(bp->pf.first_vf_id + i);
+		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+		HWRM_CHECK_RESULT;
+
+		bp->pf.max_rsscos_ctx -= rte_le_to_cpu_16(req.num_rsscos_ctxs);
+		bp->pf.max_stat_ctx -= rte_le_to_cpu_16(req.num_stat_ctxs);
+		bp->pf.max_cp_rings -= rte_le_to_cpu_16(req.num_cmpl_rings);
+		bp->pf.max_tx_rings -= rte_le_to_cpu_16(req.num_tx_rings);
+		bp->pf.max_rx_rings -= rte_le_to_cpu_16(req.num_rx_rings);
+		bp->pf.max_l2_ctx -= rte_le_to_cpu_16(req.num_l2_ctxs);
+		bp->pf.max_vnics -= rte_le_to_cpu_16(req.num_vnics);
+		bp->max_ring_grps -= rte_le_to_cpu_16(req.num_hw_ring_grps);
+		bp->pf.active_vfs++;
 	}
 
 	return rc;

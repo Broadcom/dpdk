@@ -63,6 +63,7 @@ struct bnxt_vf_info {
 	uint16_t		max_rx_rings;
 	uint16_t		max_l2_ctx;
 	uint16_t		max_vnics;
+	uint16_t		max_stat_ctx;
 	uint16_t		vlan;
 	struct bnxt_pf_info	*pf;
 };
@@ -82,6 +83,7 @@ struct bnxt_pf_info {
 	uint16_t		max_rx_rings;
 	uint16_t		max_l2_ctx;
 	uint16_t		max_vnics;
+	uint16_t		max_stat_ctx;
 	uint16_t		first_vf_id;
 	uint16_t		active_vfs;
 	uint16_t		max_vfs;
