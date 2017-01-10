@@ -481,26 +481,6 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	int rc;
 
 	bp->dev_stopped = 0;
-	rc = bnxt_hwrm_func_reset(bp);
-	if (rc) {
-		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
-		rc = -1;
-		goto error;
-	}
-	rc = bnxt_hwrm_func_qcaps(bp);
-	if (rc) {
-		RTE_LOG(ERR, PMD, "hwrm query capability failure rc: %x\n", rc);
-		rc = -1;
-		goto error;
-	}
-	if (BNXT_PF(bp)) {
-		if (bp->pf.active_vfs) {
-			// TODO: Deallocate VF resources
-		}
-		if (bp->pdev->max_vfs) {
-			bnxt_hwrm_allocate_vfs(bp, bp->pdev->max_vfs);
-		}
-	}
 
 	rc = bnxt_setup_int(bp);
 	if (rc)
@@ -1168,7 +1148,23 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		eth_dev->pci_dev->mem_resource[0].phys_addr,
 		eth_dev->pci_dev->mem_resource[0].addr);
 
-	bp->dev_stopped = 0;
+	bp->dev_stopped = 1;
+
+	rc = bnxt_hwrm_func_reset(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
+		rc = -1;
+		goto error_free;
+	}
+
+	if (BNXT_PF(bp)) {
+		if (bp->pf.active_vfs) {
+			// TODO: Deallocate VF resources
+		}
+		if (bp->pdev->max_vfs) {
+			bnxt_hwrm_allocate_vfs(bp, bp->pdev->max_vfs);
+		}
+	}
 
 	return 0;
 
