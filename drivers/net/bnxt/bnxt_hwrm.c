@@ -1539,12 +1539,38 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 	return rc;
 }
 
+static void copy_func_cfg_to_qcaps(struct hwrm_func_cfg_input *fcfg, struct hwrm_func_qcaps_output *qcaps)
+{
+	qcaps->max_rsscos_ctx = fcfg->num_rsscos_ctxs;
+	memcpy(qcaps->mac_address, fcfg->dflt_mac_addr, sizeof(qcaps->mac_address));
+	qcaps->max_l2_ctxs = fcfg->num_l2_ctxs;
+	qcaps->max_rx_rings = fcfg->num_rx_rings;
+	qcaps->max_tx_rings = fcfg->num_tx_rings;
+	qcaps->max_cmpl_rings = fcfg->num_cmpl_rings;
+	qcaps->max_stat_ctx = fcfg->num_stat_ctxs;
+	qcaps->max_vfs = 0;
+	qcaps->first_vf_id = 0;
+	qcaps->max_vnics = fcfg->num_vnics;
+	qcaps->max_decap_records = 0;
+	qcaps->max_encap_records = 0;
+	qcaps->max_tx_wm_flows = 0;
+	qcaps->max_tx_em_flows = 0;
+	qcaps->max_rx_wm_flows = 0;
+	qcaps->max_rx_em_flows = 0;
+	qcaps->max_flow_id = 0;
+	qcaps->max_mcast_filters = fcfg->num_mcast_filters;
+	qcaps->max_sp_tx_rings = 0;
+	qcaps->max_hw_ring_grps = fcfg->num_hw_ring_grps;
+}
+
 int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 {
 	struct hwrm_func_cfg_input req = {0};
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	struct hwrm_func_qcfg_input qreq = {0};
 	struct hwrm_func_qcfg_output *qresp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_qcaps_input qcreq = {0};
+	struct hwrm_func_qcaps_output *qcresp = bp->hwrm_cmd_resp_addr;
 	int i;
 	int rc = 0;
 
@@ -1584,10 +1610,10 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 		qreq.fid = rte_cpu_to_le_16(bp->pf.first_vf_id + i);
 		rc = bnxt_hwrm_send_message(bp, &qreq, sizeof(req));
 		if (rc)
-			RTE_LOG(ERR, PMD, "hwrm_func_cfg failed rc:%d\n", rc);
+			RTE_LOG(ERR, PMD, "hwrm_func_qcfg failed rc:%d\n", rc);
 		else if (resp->error_code) {
 			rc = rte_le_to_cpu_16(resp->error_code);
-			RTE_LOG(ERR, PMD, "hwrm_finc_cfg error %d\n", rc);
+			RTE_LOG(ERR, PMD, "hwrm_func_qcfg error %d\n", rc);
 		}
 		else {
 			if (memcmp(qresp->mac_address, "\x00\x00\x00\x00\x00", 6) == 0) {
@@ -1603,14 +1629,28 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 		HWRM_CHECK_RESULT;
 
-		bp->pf.max_rsscos_ctx -= rte_le_to_cpu_16(req.num_rsscos_ctxs);
-		bp->pf.max_stat_ctx -= rte_le_to_cpu_16(req.num_stat_ctxs);
-		bp->pf.max_cp_rings -= rte_le_to_cpu_16(req.num_cmpl_rings);
-		bp->pf.max_tx_rings -= rte_le_to_cpu_16(req.num_tx_rings);
-		bp->pf.max_rx_rings -= rte_le_to_cpu_16(req.num_rx_rings);
-		bp->pf.max_l2_ctx -= rte_le_to_cpu_16(req.num_l2_ctxs);
-		bp->pf.max_vnics -= rte_le_to_cpu_16(req.num_vnics);
-		bp->max_ring_grps -= rte_le_to_cpu_16(req.num_hw_ring_grps);
+		/* Get the actual allocated values now */
+		HWRM_PREP(qcreq, FUNC_QCAPS, -1, qcresp);
+		qcreq.fid = rte_cpu_to_le_16(bp->pf.first_vf_id + i);
+		rc = bnxt_hwrm_send_message(bp, &qcreq, sizeof(req));
+		if (rc) {
+			RTE_LOG(ERR, PMD, "hwrm_func_qcaps failed rc:%d\n", rc);
+			copy_func_cfg_to_qcaps(&req, qcresp);
+		}
+		else if (resp->error_code) {
+			rc = rte_le_to_cpu_16(resp->error_code);
+			RTE_LOG(ERR, PMD, "hwrm_finc_qcaps error %d\n", rc);
+			copy_func_cfg_to_qcaps(&req, qcresp);
+		}
+
+		bp->pf.max_rsscos_ctx -= rte_le_to_cpu_16(qcresp->max_rsscos_ctx);
+		bp->pf.max_stat_ctx -= rte_le_to_cpu_16(qcresp->max_stat_ctx);
+		bp->pf.max_cp_rings -= rte_le_to_cpu_16(qcresp->max_cmpl_rings);
+		bp->pf.max_tx_rings -= rte_le_to_cpu_16(qcresp->max_tx_rings);
+		bp->pf.max_rx_rings -= rte_le_to_cpu_16(qcresp->max_rx_rings);
+		bp->pf.max_l2_ctx -= rte_le_to_cpu_16(qcresp->max_l2_ctxs);
+		bp->pf.max_vnics -= rte_le_to_cpu_16(qcresp->max_vnics);
+		bp->max_ring_grps -= rte_le_to_cpu_16(qcresp->max_hw_ring_grps);
 		bp->pf.active_vfs++;
 	}
 
