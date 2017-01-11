@@ -1077,6 +1077,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	rte_eth_copy_pci_info(eth_dev, eth_dev->pci_dev);
 	bp = eth_dev->data->dev_private;
 
+	bp->dev_stopped = 1;
+
 	if (bnxt_vf_pciid(eth_dev->pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
 
@@ -1108,6 +1110,20 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc) {
 		RTE_LOG(ERR, PMD, "hwrm query capability failure rc: %x\n", rc);
 		goto error_free;
+	}
+	if (BNXT_PF(bp)) {
+		if (bp->pf.max_tx_rings == 0) {
+			RTE_LOG(ERR, PMD, "No TX rings available!\n");
+			rc = -EBUSY;
+			goto error_free;
+		}
+	}
+	else {
+		if (bp->vf.max_tx_rings == 0) {
+			RTE_LOG(ERR, PMD, "No TX rings available!\n");
+			rc = -EBUSY;
+			goto error_free;
+		}
 	}
 	eth_dev->data->mac_addrs = rte_zmalloc("bnxt_mac_addr_tbl",
 					ETHER_ADDR_LEN * MAX_NUM_MAC_ADDR, 0);
@@ -1148,8 +1164,6 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		eth_dev->pci_dev->mem_resource[0].phys_addr,
 		eth_dev->pci_dev->mem_resource[0].addr);
 
-	bp->dev_stopped = 1;
-
 	rc = bnxt_hwrm_func_reset(bp);
 	if (rc) {
 		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
@@ -1159,10 +1173,14 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (BNXT_PF(bp)) {
 		if (bp->pf.active_vfs) {
-			// TODO: Deallocate VF resources
+			// TODO: Deallocate VF resources?
 		}
 		if (bp->pdev->max_vfs) {
-			bnxt_hwrm_allocate_vfs(bp, bp->pdev->max_vfs);
+			rc = bnxt_hwrm_allocate_vfs(bp, bp->pdev->max_vfs);
+			if (rc) {
+				RTE_LOG(ERR, PMD, "Failed to allocate VFs\n");
+				goto error_free;
+			}
 		}
 	}
 
