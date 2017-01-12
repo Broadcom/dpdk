@@ -1734,7 +1734,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 * extra rings to the PF that won't be available during func_cfg() of
 	 * the VFs.
 	 *
-	 * TODO: Is this due to a lack of unregistration?  A firmware bug?
+	 * This has been fixed with firmware versions above 20.6.54
 	 */
 	bnxt_hwrm_alloc_pf_rx_rings(bp, 1);
 	if (rc)
