@@ -338,18 +338,12 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->max_hash_mac_addrs = 0;
 
 	/* PF/VF specifics */
-	if (BNXT_PF(bp)) {
-		dev_info->max_rx_queues = bp->pf.max_rx_rings;
-		dev_info->max_tx_queues = bp->pf.max_tx_rings;
+	if (BNXT_PF(bp))
 		dev_info->max_vfs = bp->pf.active_vfs;
-		dev_info->reta_size = bp->pf.max_rsscos_ctx;
-		max_vnics = bp->pf.max_vnics;
-	} else {
-		dev_info->max_rx_queues = bp->vf.max_rx_rings;
-		dev_info->max_tx_queues = bp->vf.max_tx_rings;
-		dev_info->reta_size = bp->vf.max_rsscos_ctx;
-		max_vnics = bp->vf.max_vnics;
-	}
+	dev_info->max_rx_queues = bp->max_rx_rings;
+	dev_info->max_tx_queues = bp->max_tx_rings;
+	dev_info->reta_size = bp->max_rsscos_ctx;
+	max_vnics = bp->max_vnics;
 
 	/* Fast path specifics */
 	dev_info->min_rx_bufsize = 1;
@@ -1111,19 +1105,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		RTE_LOG(ERR, PMD, "hwrm query capability failure rc: %x\n", rc);
 		goto error_free;
 	}
-	if (BNXT_PF(bp)) {
-		if (bp->pf.max_tx_rings == 0) {
-			RTE_LOG(ERR, PMD, "No TX rings available!\n");
-			rc = -EBUSY;
-			goto error_free;
-		}
-	}
-	else {
-		if (bp->vf.max_tx_rings == 0) {
-			RTE_LOG(ERR, PMD, "No TX rings available!\n");
-			rc = -EBUSY;
-			goto error_free;
-		}
+	if (bp->max_tx_rings == 0) {
+		RTE_LOG(ERR, PMD, "No TX rings available!\n");
+		rc = -EBUSY;
+		goto error_free;
 	}
 	eth_dev->data->mac_addrs = rte_zmalloc("bnxt_mac_addr_tbl",
 					ETHER_ADDR_LEN * MAX_NUM_MAC_ADDR, 0);
@@ -1135,10 +1120,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		goto error_free;
 	}
 	/* Copy the permanent MAC from the qcap response address now. */
-	if (BNXT_PF(bp))
-		memcpy(bp->mac_addr, bp->pf.mac_addr, sizeof(bp->mac_addr));
-	else
-		memcpy(bp->mac_addr, bp->vf.mac_addr, sizeof(bp->mac_addr));
+	memcpy(bp->mac_addr, bp->dflt_mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
 	bp->grp_info = rte_zmalloc("bnxt_grp_info",
 				sizeof(*bp->grp_info) * bp->max_ring_grps, 0);

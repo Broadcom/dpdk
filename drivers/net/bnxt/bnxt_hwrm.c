@@ -284,33 +284,20 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 
 	bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
 	if (BNXT_PF(bp)) {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		pf->fw_fid = rte_le_to_cpu_32(resp->fid);
-		pf->port_id = resp->port_id;
-		memcpy(pf->mac_addr, resp->mac_address, ETHER_ADDR_LEN);
-		pf->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
-		pf->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
-		pf->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
-		pf->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
-		pf->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-		pf->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
-		pf->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
-		pf->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
-		pf->max_vfs = rte_le_to_cpu_16(resp->max_vfs);
-	} else {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		vf->fw_fid = rte_le_to_cpu_32(resp->fid);
-		memcpy(vf->mac_addr, &resp->mac_address, ETHER_ADDR_LEN);
-		vf->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
-		vf->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
-		vf->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
-		vf->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
-		vf->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-		vf->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
-		vf->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
+		bp->pf.port_id = resp->port_id;
+		bp->pf.first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
+		bp->pf.max_vfs = rte_le_to_cpu_16(resp->max_vfs);
 	}
+
+	bp->fw_fid = rte_le_to_cpu_32(resp->fid);
+	memcpy(bp->dflt_mac_addr, &resp->mac_address, ETHER_ADDR_LEN);
+	bp->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
+	bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
+	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
+	bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
+	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
+	bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
+	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 
 	return rc;
 }
@@ -1513,17 +1500,10 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT;
 
-	if (BNXT_VF(bp)) {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		/* Hard Coded.. 0xfff VLAN ID mask */
-		vf->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
-	}
-	else {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		pf->active_vfs = rte_le_to_cpu_16(resp->alloc_vfs);
-	}
+	/* Hard Coded.. 0xfff VLAN ID mask */
+	bp->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
+	if (BNXT_PF(bp))
+		bp->pf.active_vfs = rte_le_to_cpu_16(resp->alloc_vfs);
 
 	switch (resp->port_partition_type) {
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:
@@ -1582,13 +1562,13 @@ static int bnxt_hwrm_alloc_pf_rx_rings(struct bnxt *bp, int tx_rings)
 	req.flags = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE);
 	req.mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
 	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
-	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->pf.max_rsscos_ctx);
-	req.num_stat_ctxs = rte_cpu_to_le_16(bp->pf.max_stat_ctx);
-	req.num_cmpl_rings = rte_cpu_to_le_16(bp->pf.max_cp_rings);
+	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx);
+	req.num_stat_ctxs = rte_cpu_to_le_16(bp->max_stat_ctx);
+	req.num_cmpl_rings = rte_cpu_to_le_16(bp->max_cp_rings);
 	req.num_tx_rings = rte_cpu_to_le_16(tx_rings);
-	req.num_rx_rings = rte_cpu_to_le_16(bp->pf.max_rx_rings);
-	req.num_l2_ctxs = rte_cpu_to_le_16(bp->pf.max_l2_ctx);
-	req.num_vnics = rte_cpu_to_le_16(bp->pf.max_vnics);
+	req.num_rx_rings = rte_cpu_to_le_16(bp->max_rx_rings);
+	req.num_l2_ctxs = rte_cpu_to_le_16(bp->max_l2_ctx);
+	req.num_vnics = rte_cpu_to_le_16(bp->max_vnics);
 	req.num_hw_ring_grps = rte_cpu_to_le_16(bp->max_ring_grps);
 	req.fid = rte_cpu_to_le_16(0xffff);
 
@@ -1615,13 +1595,13 @@ static void populate_vf_func_cfg_req(struct bnxt *bp, struct hwrm_func_cfg_input
 
 	req->mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
 	req->mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
-	req->num_rsscos_ctxs = rte_cpu_to_le_16(bp->pf.max_rsscos_ctx / (num_vfs + 1));
-	req->num_stat_ctxs = rte_cpu_to_le_16(bp->pf.max_stat_ctx / (num_vfs + 1));
-	req->num_cmpl_rings = rte_cpu_to_le_16(bp->pf.max_cp_rings / (num_vfs + 1));
-	req->num_tx_rings = rte_cpu_to_le_16(bp->pf.max_tx_rings / (num_vfs + 1));
-	req->num_rx_rings = rte_cpu_to_le_16(bp->pf.max_rx_rings / (num_vfs + 1));
-	req->num_l2_ctxs = rte_cpu_to_le_16(bp->pf.max_l2_ctx / (num_vfs + 1));
-	req->num_vnics = rte_cpu_to_le_16(bp->pf.max_vnics / (num_vfs + 1));
+	req->num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx / (num_vfs + 1));
+	req->num_stat_ctxs = rte_cpu_to_le_16(bp->max_stat_ctx / (num_vfs + 1));
+	req->num_cmpl_rings = rte_cpu_to_le_16(bp->max_cp_rings / (num_vfs + 1));
+	req->num_tx_rings = rte_cpu_to_le_16(bp->max_tx_rings / (num_vfs + 1));
+	req->num_rx_rings = rte_cpu_to_le_16(bp->max_rx_rings / (num_vfs + 1));
+	req->num_l2_ctxs = rte_cpu_to_le_16(bp->max_l2_ctx / (num_vfs + 1));
+	req->num_vnics = rte_cpu_to_le_16(bp->max_vnics / (num_vfs + 1));
 	req->num_hw_ring_grps = rte_cpu_to_le_16(bp->max_ring_grps / (num_vfs + 1));
 }
 
@@ -1673,13 +1653,13 @@ static void reserve_resources_from_vf(struct bnxt *bp, struct hwrm_func_cfg_inpu
 		copy_func_cfg_to_qcaps(cfg_req, resp);
 	}
 
-	bp->pf.max_rsscos_ctx -= rte_le_to_cpu_16(resp->max_rsscos_ctx);
-	bp->pf.max_stat_ctx -= rte_le_to_cpu_16(resp->max_stat_ctx);
-	bp->pf.max_cp_rings -= rte_le_to_cpu_16(resp->max_cmpl_rings);
-	bp->pf.max_tx_rings -= rte_le_to_cpu_16(resp->max_tx_rings);
-	bp->pf.max_rx_rings -= rte_le_to_cpu_16(resp->max_rx_rings);
-	bp->pf.max_l2_ctx -= rte_le_to_cpu_16(resp->max_l2_ctxs);
-	bp->pf.max_vnics -= rte_le_to_cpu_16(resp->max_vnics);
+	bp->max_rsscos_ctx -= rte_le_to_cpu_16(resp->max_rsscos_ctx);
+	bp->max_stat_ctx -= rte_le_to_cpu_16(resp->max_stat_ctx);
+	bp->max_cp_rings -= rte_le_to_cpu_16(resp->max_cmpl_rings);
+	bp->max_tx_rings -= rte_le_to_cpu_16(resp->max_tx_rings);
+	bp->max_rx_rings -= rte_le_to_cpu_16(resp->max_rx_rings);
+	bp->max_l2_ctx -= rte_le_to_cpu_16(resp->max_l2_ctxs);
+	bp->max_vnics -= rte_le_to_cpu_16(resp->max_vnics);
 	bp->max_ring_grps -= rte_le_to_cpu_16(resp->max_hw_ring_grps);
 }
 
@@ -1695,14 +1675,14 @@ static int update_pf_resource_max(struct bnxt *bp)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
 
-	bp->pf.max_tx_rings = rte_le_to_cpu_16(resp->alloc_tx_rings);
+	bp->max_tx_rings = rte_le_to_cpu_16(resp->alloc_tx_rings);
 	bp->pf.active_vfs = rte_le_to_cpu_16(resp->alloc_vfs);
 	/* TODO: Only TX ring value reflects actual allocation */
-	//bp->pf.max_rx_rings = rte_le_to_cpu_16(resp->alloc_rx_rings);
-	//bp->pf.max_cp_rings = rte_le_to_cpu_16(resp->alloc_cmpl_rings);
-	//bp->pf.max_rsscos_ctx = rte_le_to_cpu_16(resp->alloc_rsscos_ctx);
-	//bp->pf.max_vnics = rte_le_to_cpu_16(resp->alloc_vnics);
-	//bp->pf.max_l2_ctx = rte_le_to_cpu_16(resp->alloc_l2_ctx);
+	//bp->max_rx_rings = rte_le_to_cpu_16(resp->alloc_rx_rings);
+	//bp->max_cp_rings = rte_le_to_cpu_16(resp->alloc_cmpl_rings);
+	//bp->max_rsscos_ctx = rte_le_to_cpu_16(resp->alloc_rsscos_ctx);
+	//bp->max_vnics = rte_le_to_cpu_16(resp->alloc_vnics);
+	//bp->max_l2_ctx = rte_le_to_cpu_16(resp->alloc_l2_ctx);
 	//bp->max_ring_grps = rte_le_to_cpu_32(resp->alloc_hw_ring_grps);
 
 	return rc;
@@ -1766,7 +1746,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 * rings.  This will allow QoS to function properly.  Not setting this
 	 * will cause PF rings to break bandwidth settings.
 	 */
-	rc = bnxt_hwrm_alloc_pf_rx_rings(bp, bp->pf.max_tx_rings);
+	rc = bnxt_hwrm_alloc_pf_rx_rings(bp, bp->max_tx_rings);
 	if (rc)
 		return rc;
 
