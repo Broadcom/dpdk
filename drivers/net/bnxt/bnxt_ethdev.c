@@ -1164,6 +1164,13 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 				goto error_free;
 			}
 		}
+		else {
+			rc = bnxt_hwrm_allocate_pf_only(bp);
+			if (rc) {
+				RTE_LOG(ERR, PMD, "Failed to allocate PF resources\n");
+				goto error_free;
+			}
+		}
 	}
 
 	return 0;

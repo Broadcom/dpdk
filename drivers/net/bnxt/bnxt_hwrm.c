@@ -1543,7 +1543,7 @@ static void copy_func_cfg_to_qcaps(struct hwrm_func_cfg_input *fcfg, struct hwrm
 	qcaps->max_hw_ring_grps = fcfg->num_hw_ring_grps;
 }
 
-static int bnxt_hwrm_alloc_pf_rx_rings(struct bnxt *bp, int tx_rings)
+static int bnxt_hwrm_alloc_pf_rx_rings(struct bnxt *bp, int tx_rings, bool std_mode)
 {
 	struct hwrm_func_cfg_input req = {0};
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
@@ -1559,7 +1559,8 @@ static int bnxt_hwrm_alloc_pf_rx_rings(struct bnxt *bp, int tx_rings)
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_L2_CTXS |
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_VNICS |
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
-	req.flags = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE);
+	if (std_mode)
+		req.flags = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE);
 	req.mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
 	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
 	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx);
@@ -1688,6 +1689,23 @@ static int update_pf_resource_max(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
+{
+	int rc;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to allcoate VFs on a VF!\n");
+		return -1;
+	}
+
+	rc = bnxt_hwrm_func_qcaps(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_hwrm_alloc_pf_rx_rings(bp, bp->max_tx_rings, false);
+	return rc;
+}
+
 int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 {
 	struct hwrm_func_cfg_input req = {0};
@@ -1716,7 +1734,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 *
 	 * This has been fixed with firmware versions above 20.6.54
 	 */
-	bnxt_hwrm_alloc_pf_rx_rings(bp, 1);
+	bnxt_hwrm_alloc_pf_rx_rings(bp, 1, true);
 	if (rc)
 		return rc;
 
@@ -1746,7 +1764,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 * rings.  This will allow QoS to function properly.  Not setting this
 	 * will cause PF rings to break bandwidth settings.
 	 */
-	rc = bnxt_hwrm_alloc_pf_rx_rings(bp, bp->max_tx_rings);
+	rc = bnxt_hwrm_alloc_pf_rx_rings(bp, bp->max_tx_rings, true);
 	if (rc)
 		return rc;
 
