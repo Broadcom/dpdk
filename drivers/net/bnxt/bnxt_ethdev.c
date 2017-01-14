@@ -476,34 +476,17 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	bp->dev_stopped = 0;
 
-	rc = bnxt_setup_int(bp);
-	if (rc)
-		goto error;
-
-	rc = bnxt_alloc_mem(bp);
-	if (rc)
-		goto error;
-
-	rc = bnxt_request_int(bp);
-	if (rc)
-		goto error;
-
 	rc = bnxt_init_nic(bp);
 	if (rc)
 		goto error;
-
-	bnxt_enable_int(bp);
 
 	bnxt_link_update_op(eth_dev, 0);
 	return 0;
 
 error:
 	bnxt_shutdown_nic(bp);
-	bnxt_disable_int(bp);
-	bnxt_free_int(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
-	bnxt_free_mem(bp);
 	return rc;
 }
 
@@ -535,8 +518,6 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		eth_dev->data->dev_link.link_status = 0;
 	}
 	bnxt_set_hwrm_link_config(bp, false);
-	bnxt_disable_int(bp);
-	bnxt_free_int(bp);
 	bnxt_shutdown_nic(bp);
 	bp->dev_stopped = 1;
 }
@@ -1058,6 +1039,7 @@ init_err_disable:
 	return rc;
 }
 
+#define ALLOW_FUNC(x)	bp->pf.vf_req_fwd[((x)>>5)] &= ~rte_cpu_to_le_32((1<<((x) & 0x1f)))
 static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -1132,8 +1114,30 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		goto error_free;
 	}
 
-	rc = bnxt_hwrm_func_driver_register(bp, 0,
-					    bp->pf.vf_req_fwd);
+	/* Forward all requests */
+	memset(bp->pf.vf_req_fwd, 0xff, sizeof(bp->pf.vf_req_fwd));
+	/*
+	 * We can't forward commands before the VF driver calls drv_rgtr.
+	 * These are the ones that are may be used by drivers.
+	 */
+	ALLOW_FUNC(HWRM_VER_GET);
+	ALLOW_FUNC(HWRM_QUEUE_QPORTCFG);
+	ALLOW_FUNC(HWRM_FUNC_QCFG);
+	ALLOW_FUNC(HWRM_FUNC_QCAPS);
+	ALLOW_FUNC(HWRM_FUNC_DRV_RGTR);
+
+	/*
+	 * The following are used for driver cleanup.  If we disallow these,
+	 * VF drivers can't clean up cleanly.
+	 */
+	ALLOW_FUNC(HWRM_FUNC_DRV_UNRGTR);
+	ALLOW_FUNC(HWRM_VNIC_FREE);
+	ALLOW_FUNC(HWRM_RING_FREE);
+	ALLOW_FUNC(HWRM_RING_GRP_FREE);
+	ALLOW_FUNC(HWRM_VNIC_RSS_COS_LB_CTX_FREE);
+	ALLOW_FUNC(HWRM_CFA_L2_FILTER_FREE);
+	ALLOW_FUNC(HWRM_STAT_CTX_FREE);
+	rc = bnxt_hwrm_func_driver_register(bp);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
 			"Failed to register driver");
@@ -1173,8 +1177,32 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		}
 	}
 
+	rc = bnxt_setup_int(bp);
+	if (rc)
+		goto error_free;
+
+	rc = bnxt_alloc_mem(bp);
+	if (rc)
+		goto error_free_int;
+
+	rc = bnxt_request_int(bp);
+	if (rc)
+		goto error_free_int;
+
+	rc = bnxt_alloc_def_cp_ring(bp);
+	if (rc)
+		goto error_free_int;
+
+	bnxt_enable_int(bp);
+
 	return 0;
 
+error_free_int:
+	bnxt_disable_int(bp);
+	bnxt_free_def_cp_ring(bp);
+	bnxt_hwrm_func_buf_unrgtr(bp);
+	bnxt_free_int(bp);
+	bnxt_free_mem(bp);
 error_free:
 	eth_dev->driver->eth_dev_uninit(eth_dev);
 error:
@@ -1186,6 +1214,9 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc;
 
+	bnxt_disable_int(bp);
+	bnxt_free_int(bp);
+	bnxt_free_mem(bp);
 	if (eth_dev->data->mac_addrs != NULL) {
 		rte_free(eth_dev->data->mac_addrs);
 		eth_dev->data->mac_addrs = NULL;
