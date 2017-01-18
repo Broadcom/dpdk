@@ -1318,6 +1318,42 @@ struct output {
 	 */
 } __attribute__((packed));
 
+/* Output (16 bytes) */
+struct hwrm_err_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint32_t opaque_0;
+    /* debug info for this error response. */
+    uint16_t opaque_1;
+    /* debug info for this error response. */
+    uint8_t cmd_err;
+    /*
+     * In the case of an error response, command specific error code is
+     * returned in this field.
+     */
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+} hwrm_err_output_t, *phwrm_err_output_t;
+
 /* hwrm_ver_get */
 /*
  * Description: This function is called by a driver to determine the HWRM
