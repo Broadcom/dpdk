@@ -1626,7 +1626,7 @@ static void copy_func_cfg_to_qcaps(struct hwrm_func_cfg_input *fcfg, struct hwrm
 	qcaps->max_hw_ring_grps = fcfg->num_hw_ring_grps;
 }
 
-static int bnxt_hwrm_alloc_pf_rx_rings(struct bnxt *bp, int tx_rings, bool std_mode)
+static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings, bool std_mode)
 {
 	struct hwrm_func_cfg_input req = {0};
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
@@ -1733,7 +1733,7 @@ static void reserve_resources_from_vf(struct bnxt *bp, struct hwrm_func_cfg_inpu
 	}
 	else if (resp->error_code) {
 		rc = rte_le_to_cpu_16(resp->error_code);
-		RTE_LOG(ERR, PMD, "hwrm_finc_qcaps error %d\n", rc);
+		RTE_LOG(ERR, PMD, "hwrm_func_qcaps error %d\n", rc);
 		copy_func_cfg_to_qcaps(cfg_req, resp);
 	}
 
@@ -1785,7 +1785,7 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	rc = bnxt_hwrm_alloc_pf_rx_rings(bp, bp->max_tx_rings, false);
+	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings, false);
 	return rc;
 }
 
@@ -1817,7 +1817,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 *
 	 * This has been fixed with firmware versions above 20.6.54
 	 */
-	bnxt_hwrm_alloc_pf_rx_rings(bp, 1, true);
+	rc = bnxt_hwrm_pf_func_cfg(bp, 1, true);
 	if (rc)
 		return rc;
 
@@ -1864,7 +1864,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 * rings.  This will allow QoS to function properly.  Not setting this
 	 * will cause PF rings to break bandwidth settings.
 	 */
-	rc = bnxt_hwrm_alloc_pf_rx_rings(bp, bp->max_tx_rings, true);
+	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings, true);
 	if (rc)
 		goto error_free;
 
