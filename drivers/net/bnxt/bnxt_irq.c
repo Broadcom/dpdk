@@ -67,11 +67,11 @@ static void bnxt_int_handler(struct rte_intr_handle *handle __rte_unused,
 			/* Handle any async event */
 			bnxt_handle_async_event(bp, cmp);
 			break;
-		case CMPL_BASE_TYPE_HWRM_FWD_RESP:
-			/* Handle HWRM forwarded responses */
+		case CMPL_BASE_TYPE_HWRM_FWD_REQ:
 			bnxt_handle_fwd_req(bp, cmp);
 			break;
 		default:
+			RTE_LOG(INFO, PMD, "Ignoring %02x completion\n", CMP_TYPE(cmp));
 			/* Ignore any other events */
 			break;
 		}

@@ -65,56 +65,71 @@ void bnxt_handle_async_event(struct bnxt *bp,
 
 void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 {
+	struct hwrm_exec_fwd_resp_input *fwreq;
 	struct hwrm_fwd_req_cmpl *fwd_cmpl = (struct hwrm_fwd_req_cmpl *)cmpl;
 	struct input *fwd_cmd;
-	uint16_t logical_vf_id, error_code;
+	uint16_t vf_id;
+	uint16_t req_len;
+
+	if (bp->pf.active_vfs <= 0) {
+		RTE_LOG(ERR, PMD, "Forwarded VF with no active VFs\n");
+		return;
+	}
 
 	/* Qualify the fwd request */
-	if (fwd_cmpl->source_id < bp->pf.first_vf_id) {
-		RTE_LOG(ERR, PMD,
-			"FWD req's source_id 0x%x > first_vf_id 0x%x\n",
-			fwd_cmpl->source_id, bp->pf.first_vf_id);
-		error_code = HWRM_ERR_CODE_RESOURCE_ACCESS_DENIED;
-		goto reject;
-	} else if (fwd_cmpl->req_len_type >> HWRM_FWD_REQ_CMPL_REQ_LEN_SFT >
-		   128 - sizeof(struct input)) {
-		RTE_LOG(ERR, PMD,
-		    "FWD req's cmd len 0x%x > 108 bytes allowed\n",
-		    fwd_cmpl->req_len_type >> HWRM_FWD_REQ_CMPL_REQ_LEN_SFT);
-		error_code = HWRM_ERR_CODE_INVALID_PARAMS;
-		goto reject;
-	}
+	vf_id = rte_le_to_cpu_16(fwd_cmpl->source_id);
+
+	/* TODO: req_len is always 128, is there a way to get the actual request length? */
+	req_len = (rte_le_to_cpu_16(fwd_cmpl->req_len_type) & HWRM_FWD_REQ_CMPL_REQ_LEN_MASK) >>
+	                                                      HWRM_FWD_REQ_CMPL_REQ_LEN_SFT;
+	if (req_len > sizeof(fwreq->encap_request))
+		req_len = sizeof(fwreq->encap_request);
 
 	/* Locate VF's forwarded command */
-	logical_vf_id = fwd_cmpl->source_id - bp->pf.first_vf_id;
 	fwd_cmd = (struct input *)((uint8_t *)bp->pf.vf_req_buf +
-		   (logical_vf_id * 128));
+		   ((vf_id - bp->pf.first_vf_id) * HWRM_MAX_REQ_LEN));
+	/* Force the target ID to the source VF */
+	fwd_cmd->target_id = rte_cpu_to_le_16(vf_id);
 
-	/* Provision the request */
-	switch (fwd_cmd->req_type) {
-	case HWRM_CFA_L2_FILTER_ALLOC:
-	case HWRM_CFA_L2_FILTER_FREE:
-	case HWRM_CFA_L2_FILTER_CFG:
-	case HWRM_CFA_L2_SET_RX_MASK:
-		break;
-	default:
-		error_code = HWRM_ERR_CODE_INVALID_PARAMS;
+	if (vf_id < bp->pf.first_vf_id || vf_id >= (bp->pf.first_vf_id) + bp->pf.active_vfs) {
+		RTE_LOG(ERR, PMD,
+			"FWD req's source_id 0x%x out of range 0x%x - 0x%x (%d %d)\n",
+			vf_id, bp->pf.first_vf_id,
+			(bp->pf.first_vf_id) + bp->pf.active_vfs - 1, bp->pf.first_vf_id, bp->pf.active_vfs);
 		goto reject;
 	}
 
+	/* TODO: Call "mailbox" callback if necessary */
+
 	/* Forward */
-	fwd_cmd->target_id = fwd_cmpl->source_id;
-	bnxt_hwrm_exec_fwd_resp(bp, fwd_cmd);
+	bnxt_hwrm_exec_fwd_resp(bp, vf_id, fwd_cmd, req_len);
 	return;
 
 reject:
-	/* TODO: Encap the reject error resp into the hwrm_err_iput? */
-	/* Use the error_code for the reject cmd */
-	RTE_LOG(ERR, PMD,
-		"Error 0x%x found in the forward request\n", error_code);
+	bnxt_hwrm_reject_fwd_resp(bp, vf_id, fwd_cmd, req_len);
+	return;
 }
 
 /* For the default completion ring only */
+int bnxt_alloc_def_cp_ring(struct bnxt *bp)
+{
+	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
+	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
+	int rc;
+
+	rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
+				  HWRM_RING_ALLOC_INPUT_RING_TYPE_CMPL,
+				  0, HWRM_NA_SIGNATURE);
+	if (rc)
+		goto err_out;
+	cpr->cp_doorbell = bp->pdev->mem_resource[2].addr;
+	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+	bp->grp_info[0].cp_fw_ring_id = cp_ring->fw_ring_id;
+
+err_out:
+	return rc;
+}
+
 void bnxt_free_def_cp_ring(struct bnxt *bp)
 {
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
