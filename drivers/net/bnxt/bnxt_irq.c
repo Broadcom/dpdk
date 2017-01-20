@@ -103,7 +103,9 @@ void bnxt_disable_int(struct bnxt *bp)
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
 
 	/* Only the default completion ring */
-	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+	if (cpr != NULL) {
+		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+	}
 }
 
 void bnxt_enable_int(struct bnxt *bp)
