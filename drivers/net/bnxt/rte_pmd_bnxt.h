@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Broadcom Corporation.
+ *   Copyright(c) Broadcom Limited.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -31,53 +31,41 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _BNXT_VNIC_H_
-#define _BNXT_VNIC_H_
+#ifndef _PMD_BNXT_H_
+#define _PMD_BNXT_H_
 
-#include <sys/queue.h>
-#include <stdbool.h>
+#include <rte_ethdev.h>
 
-struct bnxt_vnic_info {
-	STAILQ_ENTRY(bnxt_vnic_info)	next;
-	uint8_t		ff_pool_idx;
+/**
+ * Enable/Disable tx loopback
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param on
+ *    1 - Enable tx loopback.
+ *    0 - Disable tx loopback.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on);
 
-	uint16_t	fw_vnic_id; /* returned by Chimp during alloc */
-	uint16_t	fw_rss_cos_lb_ctx;
-	uint16_t	ctx_is_rss_cos_lb;
-#define MAX_NUM_TRAFFIC_CLASSES		8
-#define MAX_NUM_RSS_QUEUES_PER_VNIC	16
-#define MAX_QUEUES_PER_VNIC	(MAX_NUM_RSS_QUEUES_PER_VNIC + \
-				 MAX_NUM_TRAFFIC_CLASSES)
-	uint16_t	start_grp_id;
-	uint16_t	end_grp_id;
-	uint16_t	fw_grp_ids[MAX_QUEUES_PER_VNIC];
-	uint16_t 	dflt_ring_grp;
-	uint16_t 	mru;
-	uint16_t	hash_type;
-	phys_addr_t	rss_table_dma_addr;
-	uint16_t	*rss_table;
-	phys_addr_t	rss_hash_key_dma_addr;
-	void		*rss_hash_key;
-	uint32_t	flags;
-#define BNXT_VNIC_INFO_PROMISC			(1 << 0)
-#define BNXT_VNIC_INFO_ALLMULTI			(1 << 1)
+/**
+ * set all queues drop enable bit
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param on
+ *    1 - set the queue drop enable bit for all pools.
+ *    0 - reset the queue drop enable bit for all pools.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on);
 
-	bool		vlan_strip;
-	bool		func_default;
-	bool		bd_stall;
-
-	STAILQ_HEAD(, bnxt_filter_info)	filter;
-};
-
-struct bnxt;
-void bnxt_init_vnics(struct bnxt *bp);
-int bnxt_free_vnic(struct bnxt *bp, struct bnxt_vnic_info *vnic,
-			  int pool);
-struct bnxt_vnic_info *bnxt_alloc_vnic(struct bnxt *bp);
-void bnxt_free_all_vnics(struct bnxt *bp);
-void bnxt_free_vnic_attributes(struct bnxt *bp);
-int bnxt_alloc_vnic_attributes(struct bnxt *bp);
-void bnxt_free_vnic_mem(struct bnxt *bp);
-int bnxt_alloc_vnic_mem(struct bnxt *bp);
-
-#endif
+#endif /* _PMD_BNXT_H_ */

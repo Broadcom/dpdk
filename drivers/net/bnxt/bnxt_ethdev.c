@@ -52,6 +52,7 @@
 #include "bnxt_txr.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
+#include "rte_pmd_bnxt.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -339,7 +340,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 
 	/* PF/VF specifics */
 	if (BNXT_PF(bp))
-		dev_info->max_vfs = bp->pf.active_vfs;
+		dev_info->max_vfs = bp->pf.max_vfs;
 	dev_info->max_rx_queues = bp->max_rx_rings;
 	dev_info->max_tx_queues = bp->max_tx_rings;
 	dev_info->reta_size = bp->max_rsscos_ctx;
@@ -817,6 +818,78 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 		}
 	}
 	return 0;
+}
+
+int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
+{
+	struct rte_eth_dev 		*eth_dev;
+	struct bnxt 			*bp;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (on > 1)
+		return -EINVAL;
+
+	eth_dev = &rte_eth_devices[port];
+	bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to operate on none-PF!\n");
+		return -ENOTSUP;
+	}
+
+	/* EVB mode fixed on Virtual Edge Bridge(VEB) */
+	if (on == 0) {
+		RTE_LOG(ERR, PMD, "Turning off Edge Virtual Bridge is not supportted now!\n");
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
+{
+	struct rte_eth_dev *eth_dev;
+	struct bnxt *bp;
+	uint32_t i;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (on > 1)
+		return -EINVAL;
+
+	eth_dev = &rte_eth_devices[port];
+	bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to set all queues drop on none-PF port!\n");
+		return -ENOTSUP;
+	}
+
+	if (bp->vnic_info == NULL)
+		return -ENODEV;
+
+	/* Stall PF */
+	for (i = 0; i < bp->nr_vnics; i++) {
+		bp->vnic_info[i].bd_stall = on;
+		rc = bnxt_hwrm_vnic_cfg(bp, &bp->vnic_info[i]);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "Failed to update PF VNIC %d.\n", i);
+			return rc;
+		}
+	}
+
+	/* Stall all active VFs */
+	for (i = 0; i < bp->pf.active_vfs; i++) {
+		rc = bnxt_hwrm_func_vf_stall(bp, i, on);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", i);
+			break;
+		}
+	}
+
+	return rc;
 }
 
 static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,

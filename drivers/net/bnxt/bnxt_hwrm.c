@@ -314,6 +314,8 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 	bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
+	if (BNXT_PF(bp))
+		bp->pf.total_vnics = rte_le_to_cpu_16(resp->max_vnics);
 
 	return rc;
 }
@@ -829,10 +831,11 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		}
 		vnic->fw_grp_ids[j] = bp->grp_info[i].fw_grp_id;
 	}
-
+	vnic->dflt_ring_grp = bp->grp_info[vnic->start_grp_id].fw_grp_id;
 	vnic->fw_rss_cos_lb_ctx = (uint16_t)HWRM_NA_SIGNATURE;
 	vnic->ctx_is_rss_cos_lb = HW_CONTEXT_NONE;
-
+	vnic->mru = bp->eth_dev->data->mtu + ETHER_HDR_LEN +
+				ETHER_CRC_LEN + VLAN_TAG_SIZE;
 	HWRM_PREP(req, VNIC_ALLOC, -1, resp);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
@@ -857,22 +860,55 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 			     HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE |
 			     HWRM_VNIC_CFG_INPUT_ENABLES_MRU);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
-	req.dflt_ring_grp =
-		rte_cpu_to_le_16(bp->grp_info[vnic->start_grp_id].fw_grp_id);
+	req.dflt_ring_grp = rte_cpu_to_le_16(vnic->dflt_ring_grp);
 	req.rss_rule = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
 	req.cos_rule = rte_cpu_to_le_16(0xffff);
 	req.lb_rule = rte_cpu_to_le_16(0xffff);
-	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-				   ETHER_CRC_LEN + VLAN_TAG_SIZE);
+	req.mru = rte_cpu_to_le_16(vnic->mru);
 	if (vnic->func_default)
 		req.flags = 1;
 	if (vnic->vlan_strip)
 		req.flags |=
 		    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_VLAN_STRIP_MODE);
+	if (vnic->bd_stall)
+		req.flags |=
+			rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_BD_STALL_MODE);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_vnic_qcfg(struct bnxt *bp, struct bnxt_vnic_info *vnic,
+		int16_t fw_vf_id)
+{
+	int rc = 0;
+	struct hwrm_vnic_qcfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_QCFG, -1, resp);
+
+	req.enables = rte_cpu_to_le_32(HWRM_VNIC_QCFG_INPUT_ENABLES_VF_ID_VALID);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+	req.vf_id = rte_cpu_to_le_16(fw_vf_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	vnic->dflt_ring_grp = rte_le_to_cpu_16(resp->dflt_ring_grp);
+	vnic->fw_rss_cos_lb_ctx = rte_le_to_cpu_16(resp->rss_rule);
+	// vnic->cos_rule = rte_le_to_cpu_16(resp->cos_rule);
+	// vnic->lb_rule = rte_le_to_cpu_16(resp->lb_rule);
+	vnic->mru = rte_le_to_cpu_16(resp->mru);
+	vnic->func_default = rte_le_to_cpu_32(
+			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_DEFAULT;
+	vnic->vlan_strip = rte_le_to_cpu_32(
+			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_VLAN_STRIP_MODE;
+	vnic->bd_stall = rte_le_to_cpu_32(
+			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_BD_STALL_MODE;
 
 	return rc;
 }
@@ -956,6 +992,56 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_func_vf_stall(struct bnxt *bp, uint16_t vf, uint8_t on)
+{
+	struct hwrm_func_vf_vnic_ids_query_input req = {0};
+	struct hwrm_func_vf_vnic_ids_query_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_vnic_info vnic;
+	int rc;
+	uint32_t i, num_vnic_ids;
+	uint16_t *vnic_ids;
+
+	/* First query all VNIC ids */
+
+	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query",
+			bp->pf.total_vnics * sizeof(*vnic_ids), RTE_CACHE_LINE_SIZE);
+	if (vnic_ids == NULL) {
+		rc = -ENOMEM;
+		return rc;
+	}
+
+	HWRM_PREP(req, FUNC_VF_VNIC_IDS_QUERY, -1, resp_vf_vnic_ids);
+
+	req.vf_id = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
+	req.max_vnic_id_cnt = rte_cpu_to_le_32(bp->pf.total_vnics);
+	req.vnic_id_tbl_addr = rte_malloc_virt2phy(vnic_ids);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	num_vnic_ids = rte_le_to_cpu_32(resp->vnic_id_cnt);
+
+	/* Retrieve VNIC, update bd_stall then update */
+
+	for (i = 0; i < num_vnic_ids; i++) {
+		memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
+		vnic.fw_vnic_id = rte_le_to_cpu_16(vnic_ids[i]);
+		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf);
+		if (rc)
+			break;
+
+		vnic.bd_stall = on;
+
+		rc = bnxt_hwrm_vnic_cfg(bp, &vnic);
+		if (rc)
+			break;
+	}
+
+	rte_free(vnic_ids);
 
 	return rc;
 }

@@ -65,6 +65,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_irq.c
 # Export include files
 #
 SYMLINK-y-include +=
+SYMLINK-$(CONFIG_RTE_LIBRTE_BNXT_PMD)-include += rte_pmd_bnxt.h
+
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += lib/librte_mbuf
