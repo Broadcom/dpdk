@@ -47,7 +47,11 @@ enum rte_pmd_bnxt_mb_event_rsp {
 };
 
 /* mailbox message types */
-#define HWRM_FUNC_RESET			(UINT32_C(0x11))
+#define BNXT_VF_RESET			0x01 /* VF requests reset */
+#define BNXT_VF_SET_MAC_ADDR	0x02 /* VF requests PF to set MAC addr */
+#define BNXT_VF_SET_VLAN		0x03 /* VF requests PF to set VLAN */
+#define BNXT_VF_SET_MTU			0x04 /* VF requests PF to set MTU */
+#define BNXT_VF_SET_MRU			0x05 /* VF requests PF to set MRU */
 /* TODO expose more */
 
 /**

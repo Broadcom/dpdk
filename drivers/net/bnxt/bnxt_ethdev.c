@@ -52,7 +52,6 @@
 #include "bnxt_txr.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
-#include "rte_pmd_bnxt.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -818,34 +817,6 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 		}
 	}
 	return 0;
-}
-
-int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, uint16_t type,
-					void *msg)
-{
-	struct rte_pmd_bnxt_mb_event_param cb_param;
-
-	cb_param.retval = RTE_PMD_BNXT_MB_EVENT_PROCEED;
-	cb_param.vf_id = vf_id;
-	cb_param.msg_type = type;
-	cb_param.msg = msg;
-
-	/**
-	 * ask user application if we allowed to perform those functions
-	 */
-	_rte_eth_dev_callback_process(bp->eth_dev, RTE_ETH_EVENT_VF_MBOX,
-			&cb_param);
-
-	RTE_LOG(DEBUG, PMD, "VF %d message type 0x%x handled, result: %d.\n",
-			vf_id, type, cb_param.retval);
-
-	/*
-	 * TODO Reserved for PF process logic if any.
-	 */
-	/* Default to forward */
-	cb_param.retval = RTE_PMD_BNXT_MB_EVENT_NOOP_ACK;
-
-	return cb_param.retval == RTE_PMD_BNXT_MB_EVENT_NOOP_ACK ? true : false;
 }
 
 static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,

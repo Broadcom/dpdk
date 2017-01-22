@@ -91,7 +91,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 		   ((fw_vf_id - bp->pf.first_vf_id) * HWRM_MAX_REQ_LEN));
 
 	/* Force the target ID to the source VF */
-	fwd_cmd->target_id = rte_cpu_to_le_16(fw_vf_id); // + bp->pf.first_vf_id?
+	fwd_cmd->target_id = rte_cpu_to_le_16(fw_vf_id);
 
 	if (fw_vf_id < bp->pf.first_vf_id || fw_vf_id >= (bp->pf.first_vf_id) + bp->pf.active_vfs) {
 		RTE_LOG(ERR, PMD,
