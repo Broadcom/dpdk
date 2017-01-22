@@ -60,6 +60,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_txq.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_txr.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_vnic.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_irq.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += rte_pmd_bnxt.c
 
 #
 # Export include files

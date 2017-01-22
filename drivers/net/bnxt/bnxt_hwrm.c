@@ -855,12 +855,14 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_PREP(req, VNIC_CFG, -1, resp);
 
 	/* Only RSS support for now TBD: COS & LB */
-	req.enables =
-	    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_ENABLES_DFLT_RING_GRP |
-			     HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE |
-			     HWRM_VNIC_CFG_INPUT_ENABLES_MRU);
+	req.enables = rte_cpu_to_le_32( HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE
+			| HWRM_VNIC_CFG_INPUT_ENABLES_MRU);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
-	req.dflt_ring_grp = rte_cpu_to_le_16(vnic->dflt_ring_grp);
+	if (!vnic->bd_stall) {
+		req.enables |=
+				rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_ENABLES_DFLT_RING_GRP);
+		req.dflt_ring_grp = rte_cpu_to_le_16(vnic->dflt_ring_grp);
+	}
 	req.rss_rule = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
 	req.cos_rule = rte_cpu_to_le_16(0xffff);
 	req.lb_rule = rte_cpu_to_le_16(0xffff);

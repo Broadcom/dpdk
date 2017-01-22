@@ -5086,7 +5086,7 @@ struct hwrm_vnic_qcfg_input {
      */
     uint32_t enables;
     /* This bit must be '1' for the vf_id_valid field to be configured. */
-    #define HWRM_VNIC_QCFG_INPUT_ENABLES_VF_ID_VALID           0x1UL
+    #define HWRM_VNIC_QCFG_INPUT_ENABLES_VF_ID_VALID           UINT32_C(0x1)
     uint32_t vnic_id;
     /* Logical vnic ID */
     uint16_t vf_id;
@@ -5134,24 +5134,24 @@ struct hwrm_vnic_qcfg_output {
     uint8_t unused_1;
     uint32_t flags;
     /* When this bit is '1', the VNIC is the default VNIC for the function. */
-    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_DEFAULT                0x1UL
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_DEFAULT                UINT32_C(0x1)
     /*
      * When this bit is '1', the VNIC is configured to strip VLAN in the RX
      * path. If set to '0', then VLAN stripping is disabled on this VNIC.
      */
-    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_VLAN_STRIP_MODE        0x2UL
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_VLAN_STRIP_MODE        UINT32_C(0x2)
     /*
      * When this bit is '1', the VNIC is configured to buffer receive
      * packets in the hardware until the host posts new receive buffers. If
      * set to '0', then bd_stall is disabled on this VNIC.
      */
-    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_BD_STALL_MODE          0x4UL
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_BD_STALL_MODE          UINT32_C(0x4)
     /*
      * When this bit is '1', the VNIC is configured to receive both RoCE and
      * non-RoCE traffic. If set to '0', then this VNIC is not configured to
      * operate in dual VNIC mode.
      */
-    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_DUAL_VNIC_MODE    0x8UL
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_DUAL_VNIC_MODE    UINT32_C(0x8)
     /*
      * When this flag is set to '1', the VNIC is configured to receive only
      * RoCE traffic. When this flag is set to '0', the VNIC is not
@@ -5160,7 +5160,7 @@ struct hwrm_vnic_qcfg_output {
      * configuration of the VNIC. The HWRM should not allow that type of
      * mis-configuration by HWRM clients.
      */
-    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_ONLY_VNIC_MODE    0x10UL
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_ONLY_VNIC_MODE    UINT32_C(0x10)
     /*
      * When a VNIC uses one destination ring group for certain application
      * (e.g. Receive Flow Steering) where exact match is used to direct
@@ -5171,7 +5171,7 @@ struct hwrm_vnic_qcfg_output {
      * RSS context for computing RSS hash but the RSS indirection table is
      * not configured.
      */
-    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_RSS_DFLT_CR_MODE       0x20UL
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_RSS_DFLT_CR_MODE       UINT32_C(0x20)
     uint32_t unused_2;
     uint8_t unused_3;
     uint8_t unused_4;
