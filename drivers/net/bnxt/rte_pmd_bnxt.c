@@ -108,7 +108,7 @@ int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, uint16_t type,
 		break;
 	default:
 		/* Default pass undefined hwrm message */
-		RTE_LOG(DEBUG, PMD, "VF %d hwrm message 0x%x default passed.\n",
+		RTE_LOG(DEBUG, PMD, "VF %d hwrm message 0x%04x default passed.\n",
 				vf_id, type);
 		return true;
 	}
