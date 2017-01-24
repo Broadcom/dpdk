@@ -47,8 +47,9 @@
 
 int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
 {
-	struct rte_eth_dev 		*eth_dev;
-	struct bnxt 			*bp;
+	struct rte_eth_dev 	*eth_dev;
+	struct bnxt 		*bp;
+	int 				rc;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
@@ -63,13 +64,14 @@ int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
 		return -ENOTSUP;
 	}
 
-	/* EVB mode fixed on Virtual Edge Bridge(VEB) */
-	if (on == 0) {
-		RTE_LOG(ERR, PMD, "Turning off Edge Virtual Bridge is not supportted now!\n");
-		return -ENOTSUP;
-	}
+	if (on)
+		bp->pf.evb_mode = BNXT_EVB_MODE_VEB;
+	else
+		bp->pf.evb_mode = BNXT_EVB_MODE_VEPA;
 
-	return 0;
+	rc = bnxt_hwrm_pf_evb_mode(bp);
+
+	return rc;
 }
 
 int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)

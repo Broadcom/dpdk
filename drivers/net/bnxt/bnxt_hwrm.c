@@ -1857,6 +1857,7 @@ static int update_pf_resource_max(struct bnxt *bp)
 	HWRM_CHECK_RESULT;
 
 	bp->max_tx_rings = rte_le_to_cpu_16(resp->alloc_tx_rings);
+	bp->pf.evb_mode = resp->evb_mode;
 	/* TODO: Only TX ring value reflects actual allocation */
 	//bp->pf.active_vfs = rte_le_to_cpu_16(resp->alloc_vfs);
 	//bp->max_rx_rings = rte_le_to_cpu_16(resp->alloc_rx_rings);
@@ -1973,5 +1974,23 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 
 error_free:
 	bnxt_hwrm_func_buf_unrgtr(bp);
+	return rc;
+}
+
+int bnxt_hwrm_pf_evb_mode(struct bnxt *bp)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+
+	req.fid = rte_cpu_to_le_16(0xffff);
+	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_EVB_MODE);
+	req.evb_mode = bp->pf.evb_mode;
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
 	return rc;
 }

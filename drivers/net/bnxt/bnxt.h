@@ -69,6 +69,10 @@ struct bnxt_pf_info {
 	phys_addr_t		vf_req_buf_dma_addr;
 	uint32_t		vf_req_fwd[8];
 	uint16_t		total_vnics;
+#define BNXT_EVB_MODE_NONE	0
+#define BNXT_EVB_MODE_VEB	1
+#define BNXT_EVB_MODE_VEPA	2
+	uint8_t 		evb_mode;
 };
 
 /* Max wait time is 10 * 100ms = 1s */
