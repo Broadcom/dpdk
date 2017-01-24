@@ -73,6 +73,7 @@ struct bnxt_pf_info {
 #define BNXT_EVB_MODE_VEB	1
 #define BNXT_EVB_MODE_VEPA	2
 	uint8_t 		evb_mode;
+	uint16_t 		vnic_dflt_ring_group[340];
 };
 
 /* Max wait time is 10 * 100ms = 1s */
