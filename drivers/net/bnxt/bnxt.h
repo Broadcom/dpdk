@@ -54,6 +54,12 @@ enum bnxt_hw_context {
 	HW_CONTEXT_IS_LB    = 3,
 };
 
+struct bnxt_child_vf_info {
+	uint16_t		fid;
+	uint32_t		func_cfg_flags;
+	void			*req_buf;
+};
+
 struct bnxt_pf_info {
 #define BNXT_FIRST_PF_FID	1
 #define BNXT_MAX_VFS(bp)	(bp->pf.max_vfs)
@@ -65,9 +71,10 @@ struct bnxt_pf_info {
 	uint16_t		first_vf_id;
 	uint16_t		active_vfs;
 	uint16_t		max_vfs;
+	uint32_t		func_cfg_flags;
 	void			*vf_req_buf;
-	phys_addr_t		vf_req_buf_dma_addr;
 	uint32_t		vf_req_fwd[8];
+	struct bnxt_child_vf_info	*vf_info;
 };
 
 /* Max wait time is 10 * 100ms = 1s */

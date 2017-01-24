@@ -86,8 +86,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 		req_len = sizeof(fwreq->encap_request);
 
 	/* Locate VF's forwarded command */
-	fwd_cmd = (struct input *)((uint8_t *)bp->pf.vf_req_buf +
-		   ((vf_id - bp->pf.first_vf_id) * HWRM_MAX_REQ_LEN));
+	fwd_cmd = (struct input *)bp->pf.vf_info[vf_id - bp->pf.first_vf_id].req_buf;
 	/* Force the target ID to the source VF */
 	fwd_cmd->target_id = rte_cpu_to_le_16(vf_id);
 
