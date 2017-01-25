@@ -111,5 +111,6 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp);
 int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs);
 int bnxt_hwrm_func_vf_stall(struct bnxt *bp, uint16_t vf, uint8_t on);
 int bnxt_hwrm_pf_evb_mode(struct bnxt *bp);
+int bnxt_hwrm_set_vf_vlan(struct bnxt *bp, int vf, uint16_t vlan);
 
 #endif
