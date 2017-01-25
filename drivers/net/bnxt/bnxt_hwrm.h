@@ -110,6 +110,7 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp);
 int bnxt_hwrm_allocate_pf_only(struct bnxt *bp);
 int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs);
 int bnxt_hwrm_func_vf_stall(struct bnxt *bp, uint16_t vf, uint8_t on);
+int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf, uint8_t *mac_addr);
 int bnxt_hwrm_pf_evb_mode(struct bnxt *bp);
 
 #endif
