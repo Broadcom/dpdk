@@ -47,6 +47,80 @@
 #include "rte_pmd_bnxt.h"
 #include "hsi_struct_def_dpdk.h"
 
+int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
+{
+	struct rte_eth_dev 	*eth_dev;
+	struct bnxt 		*bp;
+	int 				rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (on > 1)
+		return -EINVAL;
+
+	eth_dev = &rte_eth_devices[port];
+	bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to operate on none-PF!\n");
+		return -ENOTSUP;
+	}
+
+	if (on)
+		bp->pf.evb_mode = BNXT_EVB_MODE_VEB;
+	else
+		bp->pf.evb_mode = BNXT_EVB_MODE_VEPA;
+
+	rc = bnxt_hwrm_pf_evb_mode(bp);
+
+	return rc;
+}
+
+int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
+{
+	struct rte_eth_dev *eth_dev;
+	struct bnxt *bp;
+	uint32_t i;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (on > 1)
+		return -EINVAL;
+
+	eth_dev = &rte_eth_devices[port];
+	bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to set all queues drop on none-PF port!\n");
+		return -ENOTSUP;
+	}
+
+	if (bp->vnic_info == NULL)
+		return -ENODEV;
+
+	/* Stall PF */
+	for (i = 0; i < bp->nr_vnics; i++) {
+		bp->vnic_info[i].bd_stall = !on;
+		rc = bnxt_hwrm_vnic_cfg(bp, &bp->vnic_info[i]);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "Failed to update PF VNIC %d.\n", i);
+			return rc;
+		}
+	}
+
+	/* Stall all active VFs */
+	for (i = 0; i < bp->pf.active_vfs; i++) {
+		rc = bnxt_hwrm_func_vf_stall(bp, i, !on);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", i);
+			break;
+		}
+	}
+
+	return rc;
+}
+
 static bool _rte_callback_process(struct bnxt* bp,
 		struct rte_pmd_bnxt_mb_event_param* cb_param)
 {

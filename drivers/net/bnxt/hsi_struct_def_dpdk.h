@@ -91,6 +91,7 @@ struct ctx_hw_stats64 {
 #define HWRM_FUNC_QCFG			(UINT32_C(0x16))
 #define HWRM_FUNC_CFG			(UINT32_C(0x17))
 #define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
+#define HWRM_FUNC_VF_VNIC_IDS_QUERY	(UINT32_C(0x1c))
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
 #define HWRM_FUNC_BUF_RGTR		(UINT32_C(0x1f))
 #define HWRM_PORT_PHY_CFG		(UINT32_C(0x20))
@@ -99,6 +100,7 @@ struct ctx_hw_stats64 {
 #define HWRM_VNIC_ALLOC			(UINT32_C(0x40))
 #define HWRM_VNIC_FREE			(UINT32_C(0x41))
 #define HWRM_VNIC_CFG			(UINT32_C(0x42))
+#define HWRM_VNIC_QCFG			(UINT32_C(0x43))
 #define HWRM_VNIC_RSS_CFG		(UINT32_C(0x46))
 #define HWRM_RING_ALLOC			(UINT32_C(0x50))
 #define HWRM_RING_FREE			(UINT32_C(0x51))
@@ -3100,6 +3102,80 @@ struct hwrm_func_drv_unrgtr_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_func_vf_vnic_ids_query */
+/* Description: This command is used to query vf vnic ids. */
+/* Input (32 bytes) */
+struct hwrm_func_vf_vnic_ids_query_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint16_t vf_id;
+    /*
+     * This value is used to identify a Virtual Function (VF). The scope of
+     * VF ID is local within a PF.
+     */
+    uint8_t unused_0;
+    uint8_t unused_1;
+    uint32_t max_vnic_id_cnt;
+    /* Max number of vnic ids in vnic id table */
+    uint64_t vnic_id_tbl_addr;
+    /* This is the address for VF VNIC ID table */
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_func_vf_vnic_ids_query_output {
+	uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint32_t vnic_id_cnt;
+    /* Actual number of vnic ids Each VNIC ID is written as a 32-bit number. */
+    uint8_t unused_0;
+    uint8_t unused_1;
+    uint8_t unused_2;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+} __attribute__((packed));
+
 /* hwrm_port_phy_cfg */
 /*
  * Description: This command configures the PHY device for the port. It allows
@@ -4974,6 +5050,141 @@ struct hwrm_vnic_cfg_output {
 	 * this field is written last.
 	 */
 } __attribute__((packed));
+
+/* hwrm_vnic_qcfg */
+/*
+ * Description: Query the RX VNIC structure. This function can be used by a PF
+ * driver to query its own VNIC resource or VNIC resource of its child VF. This
+ * function can also be used by a VF driver to query its own VNIC resource.
+ */
+/* Input (32 bytes) */
+struct hwrm_vnic_qcfg_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint32_t enables;
+    /* This bit must be '1' for the vf_id_valid field to be configured. */
+    #define HWRM_VNIC_QCFG_INPUT_ENABLES_VF_ID_VALID           UINT32_C(0x1)
+    uint32_t vnic_id;
+    /* Logical vnic ID */
+    uint16_t vf_id;
+    /* ID of Virtual Function whose VNIC resource is being queried. */
+    uint16_t unused_0[3];
+};
+
+/* Output (32 bytes) */
+struct hwrm_vnic_qcfg_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint16_t dflt_ring_grp;
+    /* Default Completion ring for the VNIC. */
+    uint16_t rss_rule;
+    /*
+     * RSS ID for RSS rule/table structure. 0xFF... (All Fs) if there is no
+     * RSS rule.
+     */
+    uint16_t cos_rule;
+    /*
+     * RSS ID for COS rule/table structure. 0xFF... (All Fs) if there is no
+     * COS rule.
+     */
+    uint16_t lb_rule;
+    /*
+     * RSS ID for load balancing rule/table structure. 0xFF... (All Fs) if
+     * there is no LB rule.
+     */
+    uint16_t mru;
+    /* The maximum receive unit of the vnic. */
+    uint8_t unused_0;
+    uint8_t unused_1;
+    uint32_t flags;
+    /* When this bit is '1', the VNIC is the default VNIC for the function. */
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_DEFAULT                UINT32_C(0x1)
+    /*
+     * When this bit is '1', the VNIC is configured to strip VLAN in the RX
+     * path. If set to '0', then VLAN stripping is disabled on this VNIC.
+     */
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_VLAN_STRIP_MODE        UINT32_C(0x2)
+    /*
+     * When this bit is '1', the VNIC is configured to buffer receive
+     * packets in the hardware until the host posts new receive buffers. If
+     * set to '0', then bd_stall is disabled on this VNIC.
+     */
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_BD_STALL_MODE          UINT32_C(0x4)
+    /*
+     * When this bit is '1', the VNIC is configured to receive both RoCE and
+     * non-RoCE traffic. If set to '0', then this VNIC is not configured to
+     * operate in dual VNIC mode.
+     */
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_DUAL_VNIC_MODE    UINT32_C(0x8)
+    /*
+     * When this flag is set to '1', the VNIC is configured to receive only
+     * RoCE traffic. When this flag is set to '0', the VNIC is not
+     * configured to receive only RoCE traffic. If roce_dual_vnic_mode flag
+     * and this flag both are set to '1', then it is an invalid
+     * configuration of the VNIC. The HWRM should not allow that type of
+     * mis-configuration by HWRM clients.
+     */
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_ONLY_VNIC_MODE    UINT32_C(0x10)
+    /*
+     * When a VNIC uses one destination ring group for certain application
+     * (e.g. Receive Flow Steering) where exact match is used to direct
+     * packets to a VNIC with one destination ring group only, there is no
+     * need to configure RSS indirection table for that VNIC as only one
+     * destination ring group is used. When this bit is set to '1', then the
+     * VNIC is enabled in a mode where RSS is enabled in the VNIC using a
+     * RSS context for computing RSS hash but the RSS indirection table is
+     * not configured.
+     */
+    #define HWRM_VNIC_QCFG_OUTPUT_FLAGS_RSS_DFLT_CR_MODE       UINT32_C(0x20)
+    uint32_t unused_2;
+    uint8_t unused_3;
+    uint8_t unused_4;
+    uint8_t unused_5;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+};
 
 /* hwrm_vnic_rss_cfg */
 /* Description: This function is used to enable RSS configuration. */

@@ -51,6 +51,8 @@ struct bnxt_vnic_info {
 	uint16_t	start_grp_id;
 	uint16_t	end_grp_id;
 	uint16_t	fw_grp_ids[MAX_QUEUES_PER_VNIC];
+	uint16_t 	dflt_ring_grp;
+	uint16_t 	mru;
 	uint16_t	hash_type;
 	phys_addr_t	rss_table_dma_addr;
 	uint16_t	*rss_table;
@@ -62,6 +64,7 @@ struct bnxt_vnic_info {
 
 	bool		vlan_strip;
 	bool		func_default;
+	bool		bd_stall;
 
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
 };

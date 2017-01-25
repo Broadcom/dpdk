@@ -2,3 +2,10 @@ DPDK_16.04 {
 
 	local: *;
 };
+
+DPDK_17.02 {
+	global:
+
+	rte_pmd_bnxt_set_tx_loopback;
+	rte_pmd_bnxt_set_all_queues_drop_en;
+};

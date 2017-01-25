@@ -74,6 +74,12 @@ struct bnxt_pf_info {
 	uint32_t		func_cfg_flags;
 	void			*vf_req_buf;
 	uint32_t		vf_req_fwd[8];
+	uint16_t		total_vnics;
+#define BNXT_EVB_MODE_NONE	0
+#define BNXT_EVB_MODE_VEB	1
+#define BNXT_EVB_MODE_VEPA	2
+	uint8_t 		evb_mode;
+	uint16_t 		vnic_dflt_ring_group[340];
 	struct bnxt_child_vf_info	*vf_info;
 };
 

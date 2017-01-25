@@ -90,6 +90,9 @@
 #ifdef RTE_LIBRTE_IXGBE_PMD
 #include <rte_pmd_ixgbe.h>
 #endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+#include <rte_pmd_bnxt.h>
+#endif
 #include "testpmd.h"
 
 static struct cmdline *testpmd_cl;
@@ -11133,8 +11136,12 @@ cmd_set_tx_loopback_parsed(
 	struct cmd_tx_loopback_result *res = parsed_result;
 	int ret;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	struct rte_eth_dev *dev = &rte_eth_devices[res->port_id];
 
-	ret = rte_pmd_ixgbe_set_tx_loopback(res->port_id, is_on);
+	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0)
+		ret = rte_pmd_bnxt_set_tx_loopback(res->port_id, is_on);
+	else
+		ret = rte_pmd_ixgbe_set_tx_loopback(res->port_id, is_on);
 	switch (ret) {
 	case 0:
 		break;
@@ -11210,8 +11217,12 @@ cmd_set_all_queues_drop_en_parsed(
 	struct cmd_all_queues_drop_en_result *res = parsed_result;
 	int ret = 0;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	struct rte_eth_dev *dev = &rte_eth_devices[res->port_id];
 
-	ret = rte_pmd_ixgbe_set_all_queues_drop_en(res->port_id, is_on);
+	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0)
+		ret = rte_pmd_bnxt_set_all_queues_drop_en(res->port_id, is_on);
+	else
+		ret = rte_pmd_ixgbe_set_all_queues_drop_en(res->port_id, is_on);
 	switch (ret) {
 	case 0:
 		break;
