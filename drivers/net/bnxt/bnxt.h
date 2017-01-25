@@ -56,6 +56,7 @@ enum bnxt_hw_context {
 
 struct bnxt_child_vf_info {
 	uint16_t		fid;
+	uint16_t		max_tx_rate;
 	uint32_t		func_cfg_flags;
 	void			*req_buf;
 };

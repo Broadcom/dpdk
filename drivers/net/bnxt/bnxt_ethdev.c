@@ -963,6 +963,45 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 	return bnxt_set_hwrm_link_config(bp, true);
 }
 
+static int bnxt_set_vf_rate_limit(struct rte_eth_dev *eth_dev, uint16_t vf,
+				uint16_t tx_rate, uint64_t q_msk)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint16_t tot_rate = 0;
+	uint64_t idx;
+	int rc;
+
+	if (!bp->pf.active_vfs)
+		return -EINVAL;
+
+	if (vf >= bp->pf.max_vfs)
+		return -EINVAL;
+
+	/* Add up the per queue BW and configure MAX BW of the VF */
+	for (idx = 0; idx < 64; idx++) {
+		if ((1ULL << idx) & q_msk)
+			tot_rate += tx_rate;
+	}
+
+	/* Requested BW can't be greater than link speed */
+	if (tot_rate > eth_dev->data->dev_link.link_speed) {
+		RTE_LOG(ERR, PMD, "Rate > Link speed. Set to %d\n", tot_rate);
+		return -EINVAL;
+	}
+
+	/* Requested BW already configured */
+	if (tot_rate == bp->pf.vf_info[vf].max_tx_rate)
+		return 0;
+
+	rc = bnxt_hwrm_func_bw_cfg(bp, vf, tot_rate, 0,
+				HWRM_FUNC_CFG_INPUT_ENABLES_MAX_BW);
+
+	if (!rc)
+		bp->pf.vf_info[vf].max_tx_rate = tot_rate;
+
+	return rc;
+}
+
 /*
  * Initialization
  */
@@ -994,6 +1033,7 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.mac_addr_remove = bnxt_mac_addr_remove_op,
 	.flow_ctrl_get = bnxt_flow_ctrl_get_op,
 	.flow_ctrl_set = bnxt_flow_ctrl_set_op,
+	.set_vf_rate_limit = bnxt_set_vf_rate_limit,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
