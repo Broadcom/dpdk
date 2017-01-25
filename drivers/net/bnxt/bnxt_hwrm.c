@@ -1046,10 +1046,6 @@ int bnxt_hwrm_func_vf_stall(struct bnxt *bp, uint16_t vf, uint8_t on)
 		if (rc)
 			break;
 
-		if (vnic.dflt_ring_grp)
-			bp->pf.vnic_dflt_ring_group[vnic.fw_vnic_id] = vnic.dflt_ring_grp;
-		else
-			vnic.dflt_ring_grp = bp->pf.vnic_dflt_ring_group[vnic.fw_vnic_id];
 		vnic.bd_stall = on;
 
 		rc = bnxt_hwrm_vnic_cfg(bp, &vnic);
