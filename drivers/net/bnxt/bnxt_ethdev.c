@@ -339,7 +339,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 
 	/* PF/VF specifics */
 	if (BNXT_PF(bp))
-		dev_info->max_vfs = bp->pf.active_vfs;
+		dev_info->max_vfs = bp->pf.max_vfs;
 	dev_info->max_rx_queues = bp->max_rx_rings;
 	dev_info->max_tx_queues = bp->max_tx_rings;
 	dev_info->reta_size = bp->max_rsscos_ctx;
