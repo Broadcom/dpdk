@@ -866,26 +866,25 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_PREP(req, VNIC_CFG, -1, resp);
 
 	/* Only RSS support for now TBD: COS & LB */
-	req.enables = rte_cpu_to_le_32( HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE
-			| HWRM_VNIC_CFG_INPUT_ENABLES_MRU);
+	req.enables =
+	    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_ENABLES_DFLT_RING_GRP |
+			     HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE |
+			     HWRM_VNIC_CFG_INPUT_ENABLES_MRU);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
-	if (!vnic->bd_stall) {
-		req.enables |=
-				rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_ENABLES_DFLT_RING_GRP);
-		req.dflt_ring_grp = rte_cpu_to_le_16(vnic->dflt_ring_grp);
-	}
+	req.dflt_ring_grp = rte_cpu_to_le_16(vnic->dflt_ring_grp);
 	req.rss_rule = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
 	req.cos_rule = rte_cpu_to_le_16(0xffff);
 	req.lb_rule = rte_cpu_to_le_16(0xffff);
 	req.mru = rte_cpu_to_le_16(vnic->mru);
 	if (vnic->func_default)
-		req.flags = 1;
+		req.flags |=
+		    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_DEFAULT);
 	if (vnic->vlan_strip)
 		req.flags |=
 		    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_VLAN_STRIP_MODE);
 	if (vnic->bd_stall)
 		req.flags |=
-			rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_BD_STALL_MODE);
+		    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_BD_STALL_MODE);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -1047,10 +1046,6 @@ int bnxt_hwrm_func_vf_stall(struct bnxt *bp, uint16_t vf, uint8_t on)
 		if (rc)
 			break;
 
-		if (vnic.dflt_ring_grp)
-			bp->pf.vnic_dflt_ring_group[vnic.fw_vnic_id] = vnic.dflt_ring_grp;
-		else
-			vnic.dflt_ring_grp = bp->pf.vnic_dflt_ring_group[vnic.fw_vnic_id];
 		vnic.bd_stall = on;
 
 		rc = bnxt_hwrm_vnic_cfg(bp, &vnic);
