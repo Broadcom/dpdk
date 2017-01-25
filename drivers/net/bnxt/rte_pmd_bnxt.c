@@ -101,7 +101,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 
 	/* Stall PF */
 	for (i = 0; i < bp->nr_vnics; i++) {
-		bp->vnic_info[i].bd_stall = on;
+		bp->vnic_info[i].bd_stall = !on;
 		rc = bnxt_hwrm_vnic_cfg(bp, &bp->vnic_info[i]);
 		if (rc) {
 			RTE_LOG(ERR, PMD, "Failed to update PF VNIC %d.\n", i);
@@ -111,7 +111,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 
 	/* Stall all active VFs */
 	for (i = 0; i < bp->pf.active_vfs; i++) {
-		rc = bnxt_hwrm_func_vf_stall(bp, i, on);
+		rc = bnxt_hwrm_func_vf_stall(bp, i, !on);
 		if (rc) {
 			RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", i);
 			break;
