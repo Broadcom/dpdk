@@ -289,6 +289,8 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	int rc = 0;
 	struct hwrm_func_qcaps_input req = {.req_type = 0 };
 	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+	uint16_t new_max_vfs;
+	int i;
 
 	HWRM_PREP(req, FUNC_QCAPS, -1, resp);
 
@@ -302,7 +304,16 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (BNXT_PF(bp)) {
 		bp->pf.port_id = resp->port_id;
 		bp->pf.first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
-		bp->pf.max_vfs = rte_le_to_cpu_16(resp->max_vfs);
+		new_max_vfs = rte_le_to_cpu_16(resp->max_vfs);
+		if (new_max_vfs != bp->pf.max_vfs) {
+			if (bp->pf.vf_info)
+				rte_free(bp->pf.vf_info);
+			bp->pf.vf_info = rte_malloc("bnxt_vf_info",
+			    sizeof(bp->pf.vf_info[0]) * new_max_vfs, 0);
+			bp->pf.max_vfs = new_max_vfs;
+			for (i=0; i<new_max_vfs; i++)
+				bp->pf.vf_info[i].fid = bp->pf.first_vf_id + i;
+		}
 	}
 
 	bp->fw_fid = rte_le_to_cpu_32(resp->fid);
@@ -1063,7 +1074,7 @@ int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)
 	req.req_buf_num_pages = rte_cpu_to_le_16(1);
 	req.req_buf_page_size = rte_cpu_to_le_16(page_getenum(bp->pf.active_vfs * HWRM_MAX_REQ_LEN));
 	req.req_buf_len = rte_cpu_to_le_16(HWRM_MAX_REQ_LEN);
-	req.req_buf_page_addr[0] = rte_cpu_to_le_64(bp->pf.vf_req_buf_dma_addr);
+	req.req_buf_page_addr[0] = rte_cpu_to_le_64(rte_malloc_virt2phy(bp->pf.vf_req_buf));
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -1727,7 +1738,7 @@ static void copy_func_cfg_to_qcaps(struct hwrm_func_cfg_input *fcfg, struct hwrm
 	qcaps->max_hw_ring_grps = fcfg->num_hw_ring_grps;
 }
 
-static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings, bool std_mode)
+static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings)
 {
 	struct hwrm_func_cfg_input req = {0};
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
@@ -1743,8 +1754,7 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings, bool std_mode)
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_L2_CTXS |
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_VNICS |
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
-	if (std_mode)
-		req.flags = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE);
+	req.flags = rte_cpu_to_le_32(bp->pf.func_cfg_flags);
 	req.mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
 	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE);
 	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx);
@@ -1798,7 +1808,7 @@ static void add_random_mac_if_needed(struct bnxt *bp, struct hwrm_func_cfg_input
 
 	/* Check for zero MAC address */
 	HWRM_PREP(req, FUNC_QCFG, -1, resp);
-	req.fid = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	if (rc)
 		RTE_LOG(ERR, PMD, "hwrm_func_qcfg failed rc:%d\n", rc);
@@ -1825,7 +1835,7 @@ static void reserve_resources_from_vf(struct bnxt *bp, struct hwrm_func_cfg_inpu
 
 	/* Get the actual allocated values now */
 	HWRM_PREP(req, FUNC_QCAPS, -1, resp);
-	req.fid = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	if (rc) {
@@ -1887,7 +1897,8 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings, false);
+	bp->pf.func_cfg_flags &= ~HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE;
+	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings);
 	return rc;
 }
 
@@ -1919,7 +1930,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 *
 	 * This has been fixed with firmware versions above 20.6.54
 	 */
-	rc = bnxt_hwrm_pf_func_cfg(bp, 1, true);
+	bp->pf.func_cfg_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE;
+	rc = bnxt_hwrm_pf_func_cfg(bp, 1);
 	if (rc)
 		return rc;
 
@@ -1932,7 +1944,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 		rc = -ENOMEM;
 		goto error_free;
 	}
-	bp->pf.vf_req_buf_dma_addr = rte_malloc_virt2phy(bp->pf.vf_req_buf);
+	for (i = 0; i < num_vfs; i++)
+		bp->pf.vf_info[i].req_buf = ((char *)bp->pf.vf_req_buf) + (i * HWRM_MAX_REQ_LEN);
 
 	rc = bnxt_hwrm_func_buf_rgtr(bp);
 	if (rc)
@@ -1945,7 +1958,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 		add_random_mac_if_needed(bp, &req, i);
 
 		HWRM_PREP(req, FUNC_CFG, -1, resp);
-		req.fid = rte_cpu_to_le_16(bp->pf.first_vf_id + i);
+		req.flags = rte_cpu_to_le_32(bp->pf.vf_info[i].func_cfg_flags);
+		req.fid = rte_cpu_to_le_16(bp->pf.vf_info[i].fid);
 		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 		/* Clear enable flag for next pass */
@@ -1966,7 +1980,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 * rings.  This will allow QoS to function properly.  Not setting this
 	 * will cause PF rings to break bandwidth settings.
 	 */
-	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings, true);
+	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings);
 	if (rc)
 		goto error_free;
 

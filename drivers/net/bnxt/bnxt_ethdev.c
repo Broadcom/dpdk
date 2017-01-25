@@ -1229,6 +1229,8 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 	bnxt_free_hwrm_resources(bp);
 	if (bp->dev_stopped == 0)
 		bnxt_dev_close_op(eth_dev);
+	if (bp->pf.vf_info)
+		rte_free(bp->pf.vf_info);
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
