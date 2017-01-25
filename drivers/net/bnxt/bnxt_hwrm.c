@@ -2007,3 +2007,21 @@ int bnxt_hwrm_pf_evb_mode(struct bnxt *bp)
 
 	return rc;
 }
+
+int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
+			uint16_t max_bw, uint16_t min_bw, uint16_t enables)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
+	req.enables |= rte_cpu_to_le_32(enables);
+	//req.flags = rte_cpu_to_le_32(flags);
+	req.max_bw = rte_cpu_to_le_32(max_bw);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}

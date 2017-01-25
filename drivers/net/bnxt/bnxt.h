@@ -58,6 +58,7 @@ struct bnxt_child_vf_info {
 	uint16_t		fid;
 	uint32_t		func_cfg_flags;
 	void			*req_buf;
+	uint16_t		max_tx_rate;
 };
 
 struct bnxt_pf_info {
