@@ -1002,6 +1002,25 @@ static int bnxt_set_vf_rate_limit(struct rte_eth_dev *eth_dev, uint16_t vf,
 	return rc;
 }
 
+static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
+				uint64_t vf_mask, uint8_t vlan_on)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	int i;
+	int ret;
+	int rc = 0;
+
+	for (i=0; vf_mask; i++, vf_mask >>= 1) {
+		if (vf_mask & 1) {
+			ret = bnxt_hwrm_set_vf_vlan(bp, i, vlan_on ? vlan : 0);
+			if (ret)
+				rc = ret;
+		}
+	}
+
+	return rc;
+}
+
 /*
  * Initialization
  */
@@ -1034,6 +1053,7 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.flow_ctrl_get = bnxt_flow_ctrl_get_op,
 	.flow_ctrl_set = bnxt_flow_ctrl_set_op,
 	.set_vf_rate_limit = bnxt_set_vf_rate_limit,
+	.set_vf_vlan_filter = bnxt_set_vf_vlan_filter_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
