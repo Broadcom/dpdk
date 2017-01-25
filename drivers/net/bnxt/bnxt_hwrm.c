@@ -2044,3 +2044,21 @@ int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
 
 	return rc;
 }
+
+int bnxt_hwrm_set_vf_vlan(struct bnxt *bp, int vf, uint16_t vlan)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	req.enables |= rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_VLAN);
+	req.dflt_vlan = rte_cpu_to_le_16(vlan);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
