@@ -68,8 +68,9 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 	struct hwrm_exec_fwd_resp_input *fwreq;
 	struct hwrm_fwd_req_cmpl *fwd_cmpl = (struct hwrm_fwd_req_cmpl *)cmpl;
 	struct input *fwd_cmd;
-	uint16_t vf_id;
+	uint16_t fw_vf_id;
 	uint16_t req_len;
+	int rc;
 
 	if (bp->pf.active_vfs <= 0) {
 		RTE_LOG(ERR, PMD, "Forwarded VF with no active VFs\n");
@@ -77,7 +78,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 	}
 
 	/* Qualify the fwd request */
-	vf_id = rte_le_to_cpu_16(fwd_cmpl->source_id);
+	fw_vf_id = rte_le_to_cpu_16(fwd_cmpl->source_id);
 
 	/* TODO: req_len is always 128, is there a way to get the actual request length? */
 	req_len = (rte_le_to_cpu_16(fwd_cmpl->req_len_type) & HWRM_FWD_REQ_CMPL_REQ_LEN_MASK) >>
@@ -87,25 +88,38 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 
 	/* Locate VF's forwarded command */
 	fwd_cmd = (struct input *)bp->pf.vf_info[vf_id - bp->pf.first_vf_id].req_buf;
+  
 	/* Force the target ID to the source VF */
-	fwd_cmd->target_id = rte_cpu_to_le_16(vf_id);
+	fwd_cmd->target_id = rte_cpu_to_le_16(fw_vf_id);
 
-	if (vf_id < bp->pf.first_vf_id || vf_id >= (bp->pf.first_vf_id) + bp->pf.active_vfs) {
+	if (fw_vf_id < bp->pf.first_vf_id || fw_vf_id >= (bp->pf.first_vf_id) + bp->pf.active_vfs) {
 		RTE_LOG(ERR, PMD,
 			"FWD req's source_id 0x%x out of range 0x%x - 0x%x (%d %d)\n",
-			vf_id, bp->pf.first_vf_id,
+			fw_vf_id, bp->pf.first_vf_id,
 			(bp->pf.first_vf_id) + bp->pf.active_vfs - 1, bp->pf.first_vf_id, bp->pf.active_vfs);
 		goto reject;
 	}
 
-	/* TODO: Call "mailbox" callback if necessary */
-
-	/* Forward */
-	bnxt_hwrm_exec_fwd_resp(bp, vf_id, fwd_cmd, req_len);
-	return;
+	if (bnxt_rcv_msg_from_vf(bp, fw_vf_id - bp->pf.first_vf_id,
+			rte_le_to_cpu_16(fwd_cmd->req_type), fwd_cmd) == true) {
+		/* Forward */
+		rc = bnxt_hwrm_exec_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "Failed to send FWD req VF 0x%x, type 0x%x.\n",
+					fw_vf_id - bp->pf.first_vf_id,
+					rte_le_to_cpu_16(fwd_cmd->req_type));
+		}
+		return;
+	}
 
 reject:
-	bnxt_hwrm_reject_fwd_resp(bp, vf_id, fwd_cmd, req_len);
+	rc = bnxt_hwrm_reject_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "Failed to send REJECT req VF 0x%x, type 0x%x.\n",
+				fw_vf_id - bp->pf.first_vf_id,
+				rte_le_to_cpu_16(fwd_cmd->req_type));
+	}
+
 	return;
 }
 

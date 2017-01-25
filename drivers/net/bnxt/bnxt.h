@@ -183,4 +183,7 @@ struct bnxt {
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 
+int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, uint16_t type,
+					void *msg);
+
 #endif

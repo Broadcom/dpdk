@@ -68,4 +68,32 @@ int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on);
  */
 int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on);
 
+/**
+ * Response sent back to bnxt driver from user app after callback
+ */
+enum rte_pmd_bnxt_mb_event_rsp {
+	RTE_PMD_BNXT_MB_EVENT_NOOP_ACK,  /**< skip mbox request and ACK */
+	RTE_PMD_BNXT_MB_EVENT_NOOP_NACK, /**< skip mbox request and NACK */
+	RTE_PMD_BNXT_MB_EVENT_PROCEED,  /**< proceed with mbox request  */
+	RTE_PMD_BNXT_MB_EVENT_MAX       /**< max value of this enum */
+};
+
+/* mailbox message types */
+#define BNXT_VF_RESET			0x01 /* VF requests reset */
+#define BNXT_VF_SET_MAC_ADDR	0x02 /* VF requests PF to set MAC addr */
+#define BNXT_VF_SET_VLAN		0x03 /* VF requests PF to set VLAN */
+#define BNXT_VF_SET_MTU			0x04 /* VF requests PF to set MTU */
+#define BNXT_VF_SET_MRU			0x05 /* VF requests PF to set MRU */
+/* TODO expose more */
+
+/**
+ * Data sent to the user application when the callback is executed.
+ */
+struct rte_pmd_bnxt_mb_event_param {
+	uint16_t vf_id;     /**< Virtual Function number */
+	uint16_t msg_type; /**< VF to PF message type, defined in ixgbe_mbx.h */
+	int16_t  retval;   /**< return value */
+	void 	*msg;      /**< pointer to message */
+};
+
 #endif /* _PMD_BNXT_H_ */

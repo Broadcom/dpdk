@@ -126,7 +126,7 @@ static int bnxt_hwrm_send_message_locked(struct bnxt *bp, void *msg,
 	}
 
 	if (i >= HWRM_CMD_TIMEOUT) {
-		RTE_LOG(ERR, PMD, "Error sending msg %x\n",
+		RTE_LOG(ERR, PMD, "Error sending msg 0x%04x\n",
 			req->req_type);
 		goto err_ret;
 	}

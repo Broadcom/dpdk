@@ -38,12 +38,14 @@
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
+#include <rte_byteorder.h>
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_vnic.h"
 #include "rte_pmd_bnxt.h"
+#include "hsi_struct_def_dpdk.h"
 
 int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
 {
@@ -118,3 +120,73 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 
 	return rc;
 }
+
+static bool _rte_callback_process(struct bnxt* bp,
+		struct rte_pmd_bnxt_mb_event_param* cb_param)
+{
+	_rte_eth_dev_callback_process(bp->eth_dev, RTE_ETH_EVENT_VF_MBOX,
+			cb_param);
+
+	RTE_LOG(DEBUG, PMD, "VF %d message type 0x%x handled, result: %d.\n",
+			cb_param->vf_id, cb_param->msg_type, cb_param->retval);
+
+	/* Default to approve */
+	if (cb_param->retval == RTE_PMD_BNXT_MB_EVENT_PROCEED)
+		cb_param->retval = RTE_PMD_BNXT_MB_EVENT_NOOP_ACK;
+
+	return cb_param->retval == RTE_PMD_BNXT_MB_EVENT_NOOP_ACK ? true : false;
+}
+
+int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, uint16_t type,
+					void *msg)
+{
+	struct rte_pmd_bnxt_mb_event_param cb_param;
+	uint32_t msg_buf[16];
+	struct hwrm_func_cfg_input *cfg;
+
+	cb_param.retval = RTE_PMD_BNXT_MB_EVENT_PROCEED;
+	cb_param.vf_id = vf_id;
+	cb_param.msg = msg_buf;
+
+	switch(type) {
+	case HWRM_FUNC_CFG:
+		cfg = (struct hwrm_func_cfg_input *)msg;
+		if (cfg->enables | rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR)) {
+			cb_param.msg_type = BNXT_VF_SET_MAC_ADDR;
+			memcpy(&msg_buf[1], cfg->dflt_mac_addr, sizeof(cfg->dflt_mac_addr));
+			if (_rte_callback_process(bp, &cb_param) == false)
+				return false;
+		}
+		if (cfg->enables | rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_VLAN)) {
+			cb_param.msg_type = BNXT_VF_SET_VLAN;
+			msg_buf[1] = cfg->dflt_vlan;
+			if (_rte_callback_process(bp, &cb_param) == false)
+				return false;
+		}
+		if (cfg->enables | rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_MTU)) {
+			cb_param.msg_type = BNXT_VF_SET_MTU;
+			msg_buf[1] = cfg->mtu;
+			if (_rte_callback_process(bp, &cb_param) == false)
+				return false;
+		}
+		if (cfg->enables | rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_MRU)) {
+			cb_param.msg_type = BNXT_VF_SET_MRU;
+			msg_buf[1] = cfg->mru;
+			if (_rte_callback_process(bp, &cb_param) == false)
+				return false;
+		}
+		return true;
+		break;
+	case HWRM_FUNC_RESET:
+		cb_param.msg_type = BNXT_VF_RESET;
+		break;
+	default:
+		/* Default pass undefined hwrm message */
+		RTE_LOG(DEBUG, PMD, "VF %d hwrm message 0x%04x default passed.\n",
+				vf_id, type);
+		return true;
+	}
+
+	return _rte_callback_process(bp, &cb_param);
+}
+

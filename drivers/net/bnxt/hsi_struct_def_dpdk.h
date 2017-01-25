@@ -1181,7 +1181,7 @@ struct hwrm_fwd_req_cmpl {
 	 */
 	uint32_t unused_0;
 	/* unused1 is 32 b */
-	uint32_t req_buf_addr_v[2];
+	uint64_t req_buf_addr_v;
 	/* Address of forwarded request. */
 	/*
 	 * This value is written by the NIC such that it will be
