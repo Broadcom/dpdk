@@ -62,7 +62,7 @@ int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
 	bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
-		RTE_LOG(ERR, PMD, "Attempt to set PF loopback on none-PF port %d!\n",
+		RTE_LOG(ERR, PMD, "Attempt to set PF loopback on non-PF port %d!\n",
 				port);
 		return -ENOTSUP;
 	}
@@ -93,7 +93,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 	bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
-		RTE_LOG(ERR, PMD, "Attempt to set all queues drop on none-PF port!\n");
+		RTE_LOG(ERR, PMD, "Attempt to set all queues drop on non-PF port!\n");
 		return -ENOTSUP;
 	}
 
@@ -141,7 +141,7 @@ rte_pmd_bnxt_set_vf_mac_addr(uint8_t port, uint16_t vf,
 		return -EINVAL;
 
 	if (!BNXT_PF(bp)) {
-		RTE_LOG(ERR, PMD, "Attempt to set VF %d mac address on none-PF port %d!\n",
+		RTE_LOG(ERR, PMD, "Attempt to set VF %d mac address on non-PF port %d!\n",
 				vf, port);
 		return -ENOTSUP;
 	}
