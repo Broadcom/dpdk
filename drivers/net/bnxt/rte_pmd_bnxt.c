@@ -62,7 +62,8 @@ int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
 	bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
-		RTE_LOG(ERR, PMD, "Attempt to operate on none-PF!\n");
+		RTE_LOG(ERR, PMD, "Attempt to set PF loopback on non-PF port %d!\n",
+				port);
 		return -ENOTSUP;
 	}
 
@@ -92,7 +93,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 	bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	if (!BNXT_PF(bp)) {
-		RTE_LOG(ERR, PMD, "Attempt to set all queues drop on none-PF port!\n");
+		RTE_LOG(ERR, PMD, "Attempt to set all queues drop on non-PF port!\n");
 		return -ENOTSUP;
 	}
 
@@ -117,6 +118,35 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 			break;
 		}
 	}
+
+	return rc;
+}
+
+int
+rte_pmd_bnxt_set_vf_mac_addr(uint8_t port, uint16_t vf,
+		struct ether_addr *mac_addr)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct bnxt *bp;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (vf >= dev_info.max_vfs || mac_addr == NULL)
+		return -EINVAL;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to set VF %d mac address on non-PF port %d!\n",
+				vf, port);
+		return -ENOTSUP;
+	}
+
+	rc = bnxt_hwrm_func_vf_mac(bp, vf, (uint8_t *)mac_addr);
 
 	return rc;
 }

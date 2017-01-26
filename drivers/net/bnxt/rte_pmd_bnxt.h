@@ -69,6 +69,23 @@ int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on);
 int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on);
 
 /**
+ * Set the VF MAC address.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param mac_addr
+ *   VF MAC address.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
+ */
+int rte_pmd_bnxt_set_vf_mac_addr(uint8_t port, uint16_t vf,
+		struct ether_addr *mac_addr);
+
+/**
  * Response sent back to bnxt driver from user app after callback
  */
 enum rte_pmd_bnxt_mb_event_rsp {
