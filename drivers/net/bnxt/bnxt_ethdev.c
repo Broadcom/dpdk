@@ -223,28 +223,28 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 		rc = bnxt_hwrm_vnic_alloc(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD, "HWRM vnic alloc failure rc: %x\n",
-				rc);
+			RTE_LOG(ERR, PMD, "HWRM vnic %d alloc failure rc: %x\n",
+				i, rc);
 			goto err_out;
 		}
 
 		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
 		if (rc) {
 			RTE_LOG(ERR, PMD,
-				"HWRM vnic ctx alloc failure rc: %x\n", rc);
+				"HWRM vnic %d ctx alloc failure rc: %x\n", i, rc);
 			goto err_out;
 		}
 
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD, "HWRM vnic cfg failure rc: %x\n", rc);
+			RTE_LOG(ERR, PMD, "HWRM vnic %d cfg failure rc: %x\n", i, rc);
 			goto err_out;
 		}
 
 		rc = bnxt_set_hwrm_vnic_filters(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD, "HWRM vnic filter failure rc: %x\n",
-				rc);
+			RTE_LOG(ERR, PMD, "HWRM vnic %d filter failure rc: %x\n",
+				i, rc);
 			goto err_out;
 		}
 		if (vnic->rss_table && vnic->hash_type) {
@@ -264,8 +264,8 @@ static int bnxt_init_chip(struct bnxt *bp)
 			rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 			if (rc) {
 				RTE_LOG(ERR, PMD,
-					"HWRM vnic set RSS failure rc: %x\n",
-					rc);
+					"HWRM vnic %d set RSS failure rc: %x\n",
+					i, rc);
 				goto err_out;
 			}
 		}
@@ -662,7 +662,7 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 			new.link_speed = ETH_LINK_SPEED_100M;
 			new.link_duplex = ETH_LINK_FULL_DUPLEX;
 			RTE_LOG(ERR, PMD,
-				"Failed to retrieve link rc = 0x%x!", rc);
+				"Failed to retrieve link rc = 0x%x!\n", rc);
 			goto out;
 		}
 		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
