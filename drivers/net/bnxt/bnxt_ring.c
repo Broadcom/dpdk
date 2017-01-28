@@ -212,22 +212,6 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 	unsigned int i;
 	int rc = 0;
 
-	/* Default completion ring */
-	{
-		struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
-		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
-
-		rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
-					  HWRM_RING_ALLOC_INPUT_RING_TYPE_CMPL,
-					  0, HWRM_NA_SIGNATURE);
-		if (rc)
-			goto err_out;
-		cpr->cp_doorbell =
-		    (char *)bp->eth_dev->pci_dev->mem_resource[2].addr;
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
-		bp->grp_info[0].cp_fw_ring_id = cp_ring->fw_ring_id;
-	}
-
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
