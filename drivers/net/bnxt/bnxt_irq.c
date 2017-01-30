@@ -77,6 +77,8 @@ static void bnxt_int_handler(struct rte_intr_handle *handle __rte_unused,
 		}
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 	}
+
+	cpr->cp_raw_cons = raw_cons;
 	B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
 }
 
