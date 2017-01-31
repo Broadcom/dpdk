@@ -121,9 +121,11 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		}
 		/* For each pool, allocate MACVLAN CFA rule & VNIC */
 		if (!pools) {
+			pools = RTE_MIN(bp->max_vnics,
+			    RTE_MIN(bp->max_l2_ctx,
+			     RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS)));
 			RTE_LOG(ERR, PMD,
-				"VMDq pool not set, defaulted to 64\n");
-			pools = ETH_64_POOLS;
+			    "VMDq pool not set, defaulted to %d\n", pools);
 		}
 		nb_q_per_grp = bp->rx_cp_nr_rings / pools;
 		start_grp_id = 1;
@@ -134,7 +136,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			vnic = bnxt_alloc_vnic(bp);
 			if (!vnic) {
 				RTE_LOG(ERR, PMD,
-					"VNIC alloc failed\n");
+					"VNIC %d alloc failed\n", i);
 				rc = -ENOMEM;
 				goto err_out;
 			}
