@@ -127,9 +127,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			     RTE_MIN(bp->max_l2_ctx,
 			      RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS))));
 			pools = RTE_MIN(bp->max_vnics,
-			    RTE_MIN(bp->max_vnics,
-			     RTE_MIN(bp->max_l2_ctx,
-			      RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS))));
+			    RTE_MIN(bp->max_l2_ctx,
+			     RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS))));
 		}
 		nb_q_per_grp = bp->rx_cp_nr_rings / pools;
 		start_grp_id = 1;
