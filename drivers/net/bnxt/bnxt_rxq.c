@@ -123,7 +123,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		if (!pools) {
 			pools = RTE_MIN(bp->max_vnics,
 			    RTE_MIN(bp->max_l2_ctx,
-			     RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS))));
+			     RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS)));
 			RTE_LOG(ERR, PMD,
 			    "VMDq pool not set, defaulted to %d\n", pools);
 		}
