@@ -1235,8 +1235,10 @@ int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp)
 
 		rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr, idx);
 
-		if (rc)
+		if (rc) {
+			RTE_LOG(ERR, PMD, "stat ctx alloc failed at %d\n", idx);
 			return rc;
+		}
 	}
 	return rc;
 }

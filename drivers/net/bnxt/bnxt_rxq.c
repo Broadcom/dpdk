@@ -60,10 +60,12 @@ void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq)
 int bnxt_mq_rx_configure(struct bnxt *bp)
 {
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	const struct rte_eth_vmdq_rx_conf *vmdq_conf =
+				    &dev_conf->rx_adv_conf.vmdq_rx_conf;
 	unsigned int i, j, nb_q_per_grp, ring_idx;
 	int start_grp_id, end_grp_id, rc = 0;
 	struct bnxt_vnic_info *vnic;
-	struct bnxt_filter_info *filter;
+	struct bnxt_filter_info *filter = NULL;
 	struct bnxt_rx_queue *rxq;
 
 	bp->nr_vnics = 0;
@@ -101,18 +103,17 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG) {
 		/* VMDq ONLY, VMDq+RSS, VMDq+DCB, VMDq+DCB+RSS */
 		enum rte_eth_nb_pools pools;
+		struct ether_addr bcast =
+			{.addr_bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 
 		switch (dev_conf->rxmode.mq_mode) {
 		case ETH_MQ_RX_VMDQ_RSS:
+		case ETH_MQ_RX_VMDQ_DCB_RSS:
 		case ETH_MQ_RX_VMDQ_ONLY:
-			{
-				const struct rte_eth_vmdq_rx_conf *conf =
-				    &dev_conf->rx_adv_conf.vmdq_rx_conf;
-
-				/* ETH_8/64_POOLs */
-				pools = conf->nb_queue_pools;
-				break;
-			}
+		case ETH_MQ_RX_VMDQ_DCB:
+			/* ETH_8/64_POOLs */
+			pools = vmdq_conf->nb_queue_pools;
+			break;
 		default:
 			RTE_LOG(ERR, PMD, "Unsupported mq_mod %d\n",
 				dev_conf->rxmode.mq_mode);
@@ -140,6 +141,12 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 				rc = -ENOMEM;
 				goto err_out;
 			}
+
+			if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+				vnic->hash_type =
+					HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4 |
+					HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+
 			STAILQ_INSERT_TAIL(&bp->ff_pool[i], vnic, next);
 			bp->nr_vnics++;
 
@@ -147,7 +154,13 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 				rxq = bp->eth_dev->data->rx_queues[ring_idx];
 				rxq->vnic = vnic;
 			}
-			if (i == 0)
+			/* If default pool is provided, use it to mark default
+			 * vnic.  * Else make vnic0 as default vnic
+			 */
+			if (vmdq_conf->enable_default_pool &&
+				i == vmdq_conf->default_pool)
+				vnic->func_default = true;
+			else if (i == 0)
 				vnic->func_default = true;
 			vnic->ff_pool_idx = i;
 			vnic->start_grp_id = start_grp_id;
@@ -165,9 +178,27 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			 * each VNIC for each VMDq with MACVLAN, MACVLAN+TC
 			 */
 			STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+			memcpy(&filter->l2_addr, &bcast, ETHER_ADDR_LEN);
+			filter->enables |=
+				HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR;
 
 			start_grp_id = end_grp_id + 1;
 			end_grp_id += nb_q_per_grp;
+		}
+
+		for (i = 0; i < vmdq_conf->nb_pool_maps; i++) {
+			for (j = 0; j < bp->nr_vnics ; j++) {
+				if (vmdq_conf->pool_map[i].pools & (1UL << j)) {
+					RTE_LOG(DEBUG, PMD,
+					"Add vlan %u to vmdq pool %u\n",
+					vmdq_conf->pool_map[i].vlan_id, j);
+
+					filter->l2_ivlan =
+						vmdq_conf->pool_map[i].vlan_id;
+					filter->enables |=
+				HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN;
+				}
+			}
 		}
 		goto out;
 	}

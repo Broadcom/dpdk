@@ -178,6 +178,8 @@ struct bnxt {
 	uint16_t		max_vnics;
 	uint16_t		max_stat_ctx;
 	uint16_t		vlan;
+	uint16_t		max_vmdq_pools;
+	uint16_t		vmdq_queue_num;
 	struct bnxt_pf_info		pf;
 	uint8_t			port_partition_type;
 	uint8_t			dev_stopped;

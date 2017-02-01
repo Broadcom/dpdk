@@ -334,7 +334,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	uint16_t max_vnics, i, j, vpool, vrxq;
 
 	/* MAC Specifics */
-	dev_info->max_mac_addrs = MAX_NUM_MAC_ADDR;
+	dev_info->max_mac_addrs = bp->max_l2_ctx;
 	dev_info->max_hash_mac_addrs = 0;
 
 	/* PF/VF specifics */
@@ -392,8 +392,11 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	 */
 
 	/* VMDq resources */
-	vpool = 64; /* ETH_64_POOLS */
+	vpool = RTE_MIN(bp->max_vnics, RTE_MIN(bp->max_l2_ctx,
+			RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS)));
 	vrxq = 128; /* ETH_VMDQ_DCB_NUM_QUEUES */
+	if (vpool == 1)
+		goto found;
 	for (i = 0; i < 4; vpool >>= 1, i++) {
 		if (max_vnics > vpool) {
 			for (j = 0; j < 5; vrxq >>= 1, j++) {
@@ -414,6 +417,9 @@ found:
 	dev_info->max_vmdq_pools = vpool;
 	dev_info->vmdq_queue_num = vrxq;
 
+	bp->max_vmdq_pools = vpool;
+	bp->vmdq_queue_num = vrxq;
+
 	dev_info->vmdq_pool_base = 0;
 	dev_info->vmdq_queue_base = 0;
 }
@@ -429,8 +435,34 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	/* Inherit new configurations */
 	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
 	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
-	bp->rx_cp_nr_rings = bp->rx_nr_rings;
-	bp->tx_cp_nr_rings = bp->tx_nr_rings;
+
+	RTE_LOG(INFO, PMD, "Stat Ctx Cnt %d\n", bp->max_stat_ctx);
+	RTE_LOG(INFO, PMD, "Rx ring Cnt %d\n", bp->max_rx_rings);
+	RTE_LOG(INFO, PMD, "Tx ring Cnt %d\n", bp->max_tx_rings);
+	RTE_LOG(INFO, PMD, "Compl Ring Cnt %d\n", bp->max_cp_rings);
+	RTE_LOG(INFO, PMD, "RSSCOS Ctx Cnt %d\n", bp->max_rsscos_ctx);
+	RTE_LOG(INFO, PMD, "VNIC Cnt %d\n", bp->pf.total_vnics);
+	RTE_LOG(INFO, PMD, "L2 Ctxt Cnt %d\n", bp->max_l2_ctx);
+	RTE_LOG(INFO, PMD, "Ring group Cnt %d\n", bp->max_ring_grps);
+	RTE_LOG(INFO, PMD, "VMDQ Pools %d\n", bp->max_vmdq_pools);
+	RTE_LOG(INFO, PMD, "VMDQ Queues %d\n", bp->vmdq_queue_num);
+	RTE_LOG(INFO, PMD, "Active VFs %d\n", bp->pf.active_vfs);
+	RTE_LOG(INFO, PMD, "Max VFs %d\n", bp->pf.max_vfs);
+	//w/o the following adjustments stats_alloc fails.
+	if (bp->pf.active_vfs) {
+		//TODO Why the -4 is required? - since Stephen's patch to fix
+		//VMDQ behavior on VFs.
+		bp->rx_cp_nr_rings = RTE_MIN((uint16_t) bp->rx_nr_rings,
+						bp->max_stat_ctx / 2 - 4);
+		bp->tx_cp_nr_rings = RTE_MIN((uint16_t) bp->tx_nr_rings,
+						bp->max_stat_ctx / 2 - 4);
+	} else {
+		//Not sure why the -16 is required.
+		bp->rx_cp_nr_rings = RTE_MIN((uint16_t) bp->rx_nr_rings,
+						bp->max_stat_ctx / 2 - 16);
+		bp->tx_cp_nr_rings = RTE_MIN((uint16_t) bp->tx_nr_rings,
+						bp->max_stat_ctx / 2 - 16);
+	}
 
 	if (eth_dev->data->dev_conf.rxmode.jumbo_frame)
 		eth_dev->data->mtu =
@@ -592,6 +624,7 @@ static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic = STAILQ_FIRST(&bp->ff_pool[pool]);
 	struct bnxt_filter_info *filter;
+	int rc;
 
 	if (BNXT_VF(bp)) {
 		RTE_LOG(ERR, PMD, "Cannot add MAC address to a VF interface\n");
@@ -618,7 +651,11 @@ static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 	filter->mac_index = index;
 	memcpy(filter->l2_addr, mac_addr, ETHER_ADDR_LEN);
-	bnxt_hwrm_set_filter(bp, vnic, filter);
+	rc = bnxt_hwrm_set_filter(bp, vnic, filter);
+	if (!rc)
+		RTE_LOG(ERR, PMD, "MAC address added successfully\n");
+	else
+		RTE_LOG(ERR, PMD, "MAC address add failed %d\n", rc);
 }
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
