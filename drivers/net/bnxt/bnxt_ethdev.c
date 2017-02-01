@@ -979,28 +979,32 @@ bnxt_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
 
 	switch (udp_tunnel->prot_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
-		if (bp->vxlan_port) {
+		if (bp->vxlan_port_cnt) {
 			RTE_LOG(ERR, PMD, "Tunnel Port %d already programmed\n",
 				udp_tunnel->udp_port);
 			if (bp->vxlan_port != udp_tunnel->udp_port) {
 				RTE_LOG(ERR, PMD, "Only one port allowed\n");
 				return -ENOSPC;
 			}
+			bp->vxlan_port_cnt++;
 			return 0;
 		}
 		tunnel_type = TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_VXLAN;
+		bp->vxlan_port_cnt++;
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
-		if (bp->geneve_port) {
+		if (bp->geneve_port_cnt) {
 			RTE_LOG(ERR, PMD, "Tunnel Port %d already programmed\n",
 				udp_tunnel->udp_port);
 			if (bp->geneve_port != udp_tunnel->udp_port) {
 				RTE_LOG(ERR, PMD, "Only one port allowed\n");
 				return -ENOSPC;
 			}
+			bp->geneve_port_cnt++;
 			return 0;
 		}
 		tunnel_type = TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_GENEVE;
+		bp->geneve_port_cnt++;
 		break;
 	default:
 		RTE_LOG(ERR, PMD, "Tunnel type is not supported\n");
@@ -1022,7 +1026,7 @@ bnxt_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 
 	switch (udp_tunnel->prot_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
-		if (!bp->vxlan_port) {
+		if (!bp->vxlan_port_cnt) {
 			RTE_LOG(ERR, PMD, "No Tunnel port configured yet\n");
 			return -EINVAL;
 		}
@@ -1031,11 +1035,14 @@ bnxt_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 				udp_tunnel->udp_port, bp->vxlan_port);
 			return -EINVAL;
 		}
+		if (--bp->vxlan_port_cnt)
+			return 0;
+
 		tunnel_type = TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_VXLAN;
 		port = bp->vxlan_fw_dst_port_id;
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
-		if (!bp->geneve_port) {
+		if (!bp->geneve_port_cnt) {
 			RTE_LOG(ERR, PMD, "No Tunnel port configured yet\n");
 			return -EINVAL;
 		}
@@ -1044,6 +1051,9 @@ bnxt_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 				udp_tunnel->udp_port, bp->geneve_port);
 			return -EINVAL;
 		}
+		if (--bp->geneve_port_cnt)
+			return 0;
+
 		tunnel_type = TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_GENEVE;
 		port = bp->geneve_fw_dst_port_id;
 		break;

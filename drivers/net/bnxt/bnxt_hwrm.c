@@ -1408,12 +1408,14 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 void bnxt_free_tunnel_ports(struct bnxt *bp)
 {
-	if (bp->vxlan_port)
+	if (bp->vxlan_port_cnt)
 		bnxt_hwrm_tunnel_dst_port_free(bp, bp->vxlan_fw_dst_port_id,
 				TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_VXLAN);
-	if (bp->geneve_port)
+	bp->vxlan_port = 0;
+	if (bp->geneve_port_cnt)
 		bnxt_hwrm_tunnel_dst_port_free(bp, bp->geneve_fw_dst_port_id,
 				TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_GENEVE);
+	bp->geneve_port = 0;
 }
 
 void bnxt_free_all_hwrm_resources(struct bnxt *bp)
