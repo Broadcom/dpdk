@@ -1408,10 +1408,10 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 void bnxt_free_tunnel_ports(struct bnxt *bp)
 {
-	if (bp->vxlan_port_count)
+	if (bp->vxlan_port)
 		bnxt_hwrm_tunnel_dst_port_free(bp, bp->vxlan_fw_dst_port_id,
 				TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_VXLAN);
-	if (bp->geneve_port_count)
+	if (bp->geneve_port)
 		bnxt_hwrm_tunnel_dst_port_free(bp, bp->geneve_fw_dst_port_id,
 				TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_GENEVE);
 }
@@ -2054,11 +2054,11 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 	switch (tunnel_type) {
 	case TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_VXLAN:
 		bp->vxlan_fw_dst_port_id = resp->tunnel_dst_port_id;
-		bp->vxlan_port_count++;
+		bp->vxlan_port = port;
 		break;
 	case TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_GENEVE:
 		bp->geneve_fw_dst_port_id = resp->tunnel_dst_port_id;
-		bp->geneve_port_count++;
+		bp->geneve_port = port;
 		break;
 	default:
 		break;

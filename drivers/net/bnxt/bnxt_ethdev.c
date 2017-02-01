@@ -979,9 +979,27 @@ bnxt_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
 
 	switch (udp_tunnel->prot_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
+		if (bp->vxlan_port) {
+			RTE_LOG(ERR, PMD, "Tunnel Port %d already programmed\n",
+				udp_tunnel->udp_port);
+			if (bp->vxlan_port != udp_tunnel->udp_port) {
+				RTE_LOG(ERR, PMD, "Only one port allowed\n");
+				return -ENOSPC;
+			}
+			return 0;
+		}
 		tunnel_type = TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_VXLAN;
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
+		if (bp->geneve_port) {
+			RTE_LOG(ERR, PMD, "Tunnel Port %d already programmed\n",
+				udp_tunnel->udp_port);
+			if (bp->geneve_port != udp_tunnel->udp_port) {
+				RTE_LOG(ERR, PMD, "Only one port allowed\n");
+				return -ENOSPC;
+			}
+			return 0;
+		}
 		tunnel_type = TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_GENEVE;
 		break;
 	default:
@@ -1004,10 +1022,28 @@ bnxt_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 
 	switch (udp_tunnel->prot_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
+		if (!bp->vxlan_port) {
+			RTE_LOG(ERR, PMD, "No Tunnel port configured yet\n");
+			return -EINVAL;
+		}
+		if (bp->vxlan_port != udp_tunnel->udp_port) {
+			RTE_LOG(ERR, PMD, "Req Port: %d. Configured port: %d\n",
+				udp_tunnel->udp_port, bp->vxlan_port);
+			return -EINVAL;
+		}
 		tunnel_type = TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_VXLAN;
 		port = bp->vxlan_fw_dst_port_id;
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
+		if (!bp->geneve_port) {
+			RTE_LOG(ERR, PMD, "No Tunnel port configured yet\n");
+			return -EINVAL;
+		}
+		if (bp->geneve_port != udp_tunnel->udp_port) {
+			RTE_LOG(ERR, PMD, "Req Port: %d. Configured port: %d\n",
+				udp_tunnel->udp_port, bp->geneve_port);
+			return -EINVAL;
+		}
 		tunnel_type = TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_GENEVE;
 		port = bp->geneve_fw_dst_port_id;
 		break;
@@ -1019,9 +1055,9 @@ bnxt_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 	rc = bnxt_hwrm_tunnel_dst_port_free(bp, port, tunnel_type);
 	if (!rc) {
 		if (tunnel_type == TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_VXLAN)
-			--bp->vxlan_port_count;
+			bp->vxlan_port = 0;
 		if (tunnel_type == TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_GENEVE)
-			--bp->geneve_port_count;
+			bp->geneve_port = 0;
 	}
 	return rc;
 }
