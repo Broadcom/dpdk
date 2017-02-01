@@ -339,7 +339,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 
 	/* PF/VF specifics */
 	if (BNXT_PF(bp))
-		dev_info->max_vfs = bp->pf.max_vfs;
+		dev_info->max_vfs = eth_dev->pci_dev->max_vfs;
 	dev_info->max_rx_queues = bp->max_rx_rings;
 	dev_info->max_tx_queues = bp->max_tx_rings;
 	dev_info->reta_size = bp->max_rsscos_ctx;
@@ -974,7 +974,7 @@ static int bnxt_set_vf_rate_limit(struct rte_eth_dev *eth_dev, uint16_t vf,
 	if (!bp->pf.active_vfs)
 		return -EINVAL;
 
-	if (vf >= bp->pf.max_vfs)
+	if (vf >= bp->pdev->max_vfs)
 		return -EINVAL;
 
 	/* Add up the per queue BW and configure MAX BW of the VF */
