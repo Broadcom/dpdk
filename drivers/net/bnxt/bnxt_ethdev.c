@@ -963,6 +963,64 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 	return bnxt_set_hwrm_link_config(bp, true);
 }
 
+/* Add UDP tunneling port */
+static int
+bnxt_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint16_t tunnel_type = 0;
+	int rc = 0;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		tunnel_type = TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_VXLAN;
+		break;
+	case RTE_TUNNEL_TYPE_GENEVE:
+		tunnel_type = TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_GENEVE;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "Tunnel type is not supported\n");
+		return -ENOTSUP;
+	}
+	rc = bnxt_hwrm_tunnel_dst_port_alloc(bp, udp_tunnel->udp_port,
+					     tunnel_type);
+	return rc;
+}
+
+static int
+bnxt_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint16_t tunnel_type = 0;
+	uint16_t port = 0;
+	int rc = 0;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		tunnel_type = TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_VXLAN;
+		port = bp->vxlan_fw_dst_port_id;
+		break;
+	case RTE_TUNNEL_TYPE_GENEVE:
+		tunnel_type = TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_GENEVE;
+		port = bp->geneve_fw_dst_port_id;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "Tunnel type is not supported");
+		return -ENOTSUP;
+	}
+
+	rc = bnxt_hwrm_tunnel_dst_port_free(bp, port, tunnel_type);
+	if (!rc) {
+		if (tunnel_type == TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_VXLAN)
+			--bp->vxlan_port_count;
+		if (tunnel_type == TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_GENEVE)
+			--bp->geneve_port_count;
+	}
+	return rc;
+}
+
 static int bnxt_set_vf_rate_limit(struct rte_eth_dev *eth_dev, uint16_t vf,
 				uint16_t tx_rate, uint64_t q_msk)
 {
@@ -1033,6 +1091,8 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.mac_addr_remove = bnxt_mac_addr_remove_op,
 	.flow_ctrl_get = bnxt_flow_ctrl_get_op,
 	.flow_ctrl_set = bnxt_flow_ctrl_set_op,
+	.udp_tunnel_port_add  = bnxt_udp_tunnel_port_add,
+	.udp_tunnel_port_del  = bnxt_udp_tunnel_port_del,
 	.set_vf_rate_limit = bnxt_set_vf_rate_limit,
 };
 
