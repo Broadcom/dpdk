@@ -467,8 +467,9 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto error;
 		}
+		rte_mem_lock_page(bp->hwrm_cmd_resp_addr);
 		bp->hwrm_cmd_resp_dma_addr =
-			rte_malloc_virt2phy(bp->hwrm_cmd_resp_addr);
+			rte_mem_virt2phy(bp->hwrm_cmd_resp_addr);
 		bp->max_resp_len = max_resp_len;
 	}
 
@@ -1025,21 +1026,26 @@ int bnxt_hwrm_func_vf_stall(struct bnxt *bp, uint16_t vf, uint8_t on)
 	int rc;
 	uint32_t i, num_vnic_ids;
 	uint16_t *vnic_ids;
+	size_t vnic_id_sz;
 
 	/* First query all VNIC ids */
 
-	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query",
-			bp->pf.total_vnics * sizeof(*vnic_ids), RTE_CACHE_LINE_SIZE);
+	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
+	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
+			RTE_CACHE_LINE_SIZE);
 	if (vnic_ids == NULL) {
 		rc = -ENOMEM;
 		return rc;
+	}
+	for (i = 0; i< vnic_id_sz; i+=rte_eal_get_physmem_size()) {
+		rte_mem_lock_page(((char *)vnic_ids) + i);
 	}
 
 	HWRM_PREP(req, FUNC_VF_VNIC_IDS_QUERY, -1, resp_vf_vnic_ids);
 
 	req.vf_id = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
 	req.max_vnic_id_cnt = rte_cpu_to_le_32(bp->pf.total_vnics);
-	req.vnic_id_tbl_addr = rte_malloc_virt2phy(vnic_ids);
+	req.vnic_id_tbl_addr = rte_mem_virt2phy(vnic_ids);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
@@ -1097,7 +1103,7 @@ int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)
 	req.req_buf_num_pages = rte_cpu_to_le_16(1);
 	req.req_buf_page_size = rte_cpu_to_le_16(page_getenum(bp->pf.active_vfs * HWRM_MAX_REQ_LEN));
 	req.req_buf_len = rte_cpu_to_le_16(HWRM_MAX_REQ_LEN);
-	req.req_buf_page_addr[0] = rte_cpu_to_le_64(rte_malloc_virt2phy(bp->pf.vf_req_buf));
+	req.req_buf_page_addr[0] = rte_cpu_to_le_64(rte_mem_virt2phy(bp->pf.vf_req_buf));
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -1365,6 +1371,7 @@ int bnxt_alloc_all_hwrm_ring_grps(struct bnxt *bp)
 void bnxt_free_hwrm_resources(struct bnxt *bp)
 {
 	/* Release memzone */
+	/* TODO: unlock page?!?! */
 	rte_free(bp->hwrm_cmd_resp_addr);
 	bp->hwrm_cmd_resp_addr = NULL;
 	bp->hwrm_cmd_resp_dma_addr = 0;
@@ -1380,10 +1387,12 @@ int bnxt_alloc_hwrm_resources(struct bnxt *bp)
 	bp->max_req_len = HWRM_MAX_REQ_LEN;
 	bp->max_resp_len = HWRM_MAX_RESP_LEN;
 	bp->hwrm_cmd_resp_addr = rte_malloc(type, bp->max_resp_len, 0);
-	if (bp->hwrm_cmd_resp_addr == NULL)
+	rte_mem_lock_page(bp->hwrm_cmd_resp_addr);
+	if (bp->hwrm_cmd_resp_addr == NULL) {
 		return -ENOMEM;
+	}
 	bp->hwrm_cmd_resp_dma_addr =
-		rte_malloc_virt2phy(bp->hwrm_cmd_resp_addr);
+		rte_mem_virt2phy(bp->hwrm_cmd_resp_addr);
 	rte_spinlock_init(&bp->hwrm_lock);
 
 	return 0;
@@ -1946,7 +1955,9 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	struct hwrm_func_cfg_input req = {0};
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	int i;
+	unsigned ui;
 	int rc = 0;
+	size_t req_buf_sz;
 
 	if (!BNXT_PF(bp)) {
 		RTE_LOG(ERR, PMD, "Attempt to allcoate VFs on a VF!\n");
@@ -1977,11 +1988,15 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	/*
 	 * Now, create and register a buffer to hold forwarded VF requests
 	 */
-	bp->pf.vf_req_buf = rte_malloc("bnxt_vf_fwd", num_vfs * HWRM_MAX_REQ_LEN, 
+	req_buf_sz = num_vfs * HWRM_MAX_REQ_LEN;
+	bp->pf.vf_req_buf = rte_malloc("bnxt_vf_fwd", req_buf_sz, 
 		page_roundup(num_vfs * HWRM_MAX_REQ_LEN));
 	if (bp->pf.vf_req_buf == NULL) {
 		rc = -ENOMEM;
 		goto error_free;
+	}
+	for (ui = 0; ui < req_buf_sz; ui += rte_eal_get_physmem_size()) {
+		rte_mem_lock_page(((char *)bp->pf.vf_req_buf) + ui);
 	}
 	for (i = 0; i < num_vfs; i++)
 		bp->pf.vf_info[i].req_buf = ((char *)bp->pf.vf_req_buf) + (i * HWRM_MAX_REQ_LEN);

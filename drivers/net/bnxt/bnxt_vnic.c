@@ -172,6 +172,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 				HW_HASH_KEY_SIZE);
 	uint16_t max_vnics;
 	int i;
+	phys_addr_t mz_phys_addr;
 
 	max_vnics = bp->max_vnics;
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
@@ -188,6 +189,11 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 		if (!mz)
 			return -ENOMEM;
 	}
+	mz_phys_addr = mz->phys_addr;
+	if ((phys_addr_t)mz->addr == mz_phys_addr) {
+		RTE_LOG(WARNING, PMD, "Memzone physical address same as virtual.  Using rte_mem_virt2phy()\n");
+		mz_phys_addr = rte_mem_virt2phy(mz->addr);
+	}
 
 	for (i = 0; i < max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
@@ -197,7 +203,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 			(void *)((char *)mz->addr + (entry_length * i));
 		memset(vnic->rss_table, -1, entry_length);
 
-		vnic->rss_table_dma_addr = mz->phys_addr + (entry_length * i);
+		vnic->rss_table_dma_addr = mz_phys_addr + (entry_length * i);
 		vnic->rss_hash_key = (void *)((char *)vnic->rss_table +
 			     HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table));
 
