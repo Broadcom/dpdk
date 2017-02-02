@@ -404,6 +404,9 @@ extern struct ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
 extern uint32_t burst_tx_delay_time; /**< Burst tx delay time(us) for mac-retry. */
 extern uint32_t burst_tx_retry_num;  /**< Burst tx retry number for mac-retry. */
 
+extern uint8_t tx_vxlan;
+extern uint8_t tx_geneve;
+
 static inline unsigned int
 lcore_num(void)
 {
@@ -541,6 +544,7 @@ void set_nb_pkt_per_burst(uint16_t pkt_burst);
 char *list_pkt_forwarding_modes(void);
 char *list_pkt_forwarding_retry_modes(void);
 void set_pkt_forwarding_mode(const char *fwd_mode);
+void set_tunnel_mode(const char *tunnel_mode_name);
 void start_packet_forwarding(int with_tx_first);
 void stop_packet_forwarding(void);
 void dev_set_link_up(portid_t pid);
