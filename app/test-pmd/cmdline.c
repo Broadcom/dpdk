@@ -265,6 +265,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set portlist (x[,y]*)\n"
 			"    Set the list of forwarding ports.\n\n"
 
+			"set tunnel (vxlan|geneve|none)\n"
+			"    Set the Tunnel Mode.\n\n"
+
 #ifdef RTE_LIBRTE_IXGBE_PMD
 			"set tx loopback (port_id) (on|off)\n"
 			"    Enable or disable tx loopback.\n\n"
@@ -4733,6 +4736,12 @@ struct cmd_set_fwd_mode_result {
 	cmdline_fixed_string_t mode;
 };
 
+struct cmd_set_tunnel_mode_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t tunnel;
+	cmdline_fixed_string_t mode;
+};
+
 static void cmd_set_fwd_mode_parsed(void *parsed_result,
 				    __attribute__((unused)) struct cmdline *cl,
 				    __attribute__((unused)) void *data)
@@ -4743,6 +4752,15 @@ static void cmd_set_fwd_mode_parsed(void *parsed_result,
 	set_pkt_forwarding_mode(res->mode);
 }
 
+static void cmd_set_tunnel_mode_parsed(void *parsed_result,
+				    __attribute__((unused)) struct cmdline *cl,
+				    __attribute__((unused)) void *data)
+{
+	struct cmd_set_tunnel_mode_result *res = parsed_result;
+
+	set_tunnel_mode(res->mode);
+}
+
 cmdline_parse_token_string_t cmd_setfwd_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, set, "set");
 cmdline_parse_token_string_t cmd_setfwd_fwd =
@@ -4750,6 +4768,14 @@ cmdline_parse_token_string_t cmd_setfwd_fwd =
 cmdline_parse_token_string_t cmd_setfwd_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, mode,
 		"" /* defined at init */);
+
+cmdline_parse_token_string_t cmd_settunnel_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, set, "set");
+cmdline_parse_token_string_t cmd_settunnel_tunnel =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, tunnel, "tunnel");
+cmdline_parse_token_string_t cmd_settunnel_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, mode,
+		"vxlan|geneve|none");
 
 cmdline_parse_inst_t cmd_set_fwd_mode = {
 	.f = cmd_set_fwd_mode_parsed,
@@ -4759,6 +4785,18 @@ cmdline_parse_inst_t cmd_set_fwd_mode = {
 		(void *)&cmd_setfwd_set,
 		(void *)&cmd_setfwd_fwd,
 		(void *)&cmd_setfwd_mode,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_tunnel_mode = {
+	.f = cmd_set_tunnel_mode_parsed,
+	.data = NULL,
+	.help_str = "set tunnel vxlan|geneve|none", /* defined at init */
+	.tokens = {
+		(void *)&cmd_settunnel_set,
+		(void *)&cmd_settunnel_tunnel,
+		(void *)&cmd_settunnel_mode,
 		NULL,
 	},
 };
@@ -11458,6 +11496,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_allmulti_mode_all,
 	(cmdline_parse_inst_t *)&cmd_set_flush_rx,
 	(cmdline_parse_inst_t *)&cmd_set_link_check,
+	(cmdline_parse_inst_t *)&cmd_set_tunnel_mode,
 #ifdef RTE_NIC_BYPASS
 	(cmdline_parse_inst_t *)&cmd_set_bypass_mode,
 	(cmdline_parse_inst_t *)&cmd_set_bypass_event,
