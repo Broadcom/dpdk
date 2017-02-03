@@ -119,4 +119,6 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type);
 void bnxt_free_tunnel_ports(struct bnxt *bp);
+int bnxt_hwrm_func_cfg_set_vf_mac_spoof(struct bnxt *bp, uint16_t vf,
+					uint32_t flags);
 #endif

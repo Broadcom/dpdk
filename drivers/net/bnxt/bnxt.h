@@ -59,6 +59,7 @@ struct bnxt_child_vf_info {
 	uint16_t		max_tx_rate;
 	uint32_t		func_cfg_flags;
 	void			*req_buf;
+	uint8_t			mac_spoof_en;
 };
 
 struct bnxt_pf_info {
