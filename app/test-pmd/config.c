@@ -1810,12 +1810,19 @@ set_tunnel_mode(const char *tunnel_mode_name)
 		if (! strcmp(tunnel_mode_name, "vxlan")) {
 			tx_vxlan = 1;
 			tx_geneve = 0;
+			tx_nvgre = 0;
 		} else if (! strcmp(tunnel_mode_name, "geneve")) {
 			tx_geneve = 1;
 			tx_vxlan = 0;
+			tx_nvgre = 0;
+		} else if (! strcmp(tunnel_mode_name, "nvgre")) {
+			tx_nvgre = 1;
+			tx_vxlan = 0;
+			tx_geneve = 0;
 		} else if (! strcmp(tunnel_mode_name, "none")) {
 			tx_vxlan = 0;
 			tx_geneve = 0;
+			tx_nvgre = 0;
 		} else {
 			printf("Unknown Tunnel mode\n");
 		}

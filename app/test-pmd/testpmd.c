@@ -334,6 +334,7 @@ static int all_ports_started(void);
 
 uint8_t tx_geneve = 0;
 uint8_t tx_vxlan = 0;
+uint8_t tx_nvgre = 0;
 
 /*
  * Find next enabled port

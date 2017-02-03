@@ -265,7 +265,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set portlist (x[,y]*)\n"
 			"    Set the list of forwarding ports.\n\n"
 
-			"set tunnel (vxlan|geneve|none)\n"
+			"set tunnel (vxlan|geneve|nvgre|none)\n"
 			"    Set the Tunnel Mode.\n\n"
 
 #ifdef RTE_LIBRTE_IXGBE_PMD
@@ -4775,7 +4775,7 @@ cmdline_parse_token_string_t cmd_settunnel_tunnel =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, tunnel, "tunnel");
 cmdline_parse_token_string_t cmd_settunnel_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, mode,
-		"vxlan|geneve|none");
+		"" /* defined at init */);
 
 cmdline_parse_inst_t cmd_set_fwd_mode = {
 	.f = cmd_set_fwd_mode_parsed,
@@ -4792,7 +4792,7 @@ cmdline_parse_inst_t cmd_set_fwd_mode = {
 cmdline_parse_inst_t cmd_set_tunnel_mode = {
 	.f = cmd_set_tunnel_mode_parsed,
 	.data = NULL,
-	.help_str = "set tunnel vxlan|geneve|none", /* defined at init */
+	.help_str = "set tunnel vxlan|geneve|nvgre|none", /* defined at init */
 	.tokens = {
 		(void *)&cmd_settunnel_set,
 		(void *)&cmd_settunnel_tunnel,
