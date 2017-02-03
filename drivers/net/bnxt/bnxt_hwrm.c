@@ -1955,7 +1955,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	struct hwrm_func_cfg_input req = {0};
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	int i;
-	unsigned ui;
+	unsigned int ui;
 	int rc = 0;
 	size_t req_buf_sz;
 
