@@ -92,6 +92,7 @@ static struct udp_hdr outer_pkt_udp_hdr; /**< UDP header of transmitted packets.
 static uint8_t vxlan[8] = { 0x08, 0, 0, 0, 0x55, 0x22, 0x11, 0 }; /** <flags, rsvd, rsvd, rsvd, vni, vni, vni, rsvd> **/
 #define GENEVE_PORT	6081
 static uint8_t geneve_hdr[8] = { 0x00, 0x0, 0x65, 0x58, 0x01, 0x23, 0x45, 0x00 };/** <ver:opt_len, oam:crit:rsvd, p_type, p_type, vni, vni, vni, rsvd> **/
+static uint8_t gre_hdr[8] = { 0x20, 0x00, 0x65, 0x58, 0x00, 0x12, 0x23, 0x11 };
 
 static void
 copy_buf_to_pkt_segs(void* buf, unsigned len, struct rte_mbuf *pkt,
@@ -137,11 +138,13 @@ setup_pkt_udp_ip_headers(struct ipv4_hdr *ip_hdr,
 {
 	uint16_t *ptr16;
 	uint32_t ip_cksum;
-	uint16_t pkt_len;
+	uint16_t pkt_len = 0;
 
 	/*
 	 * Initialize UDP header.
 	 */
+	if (outer && tx_nvgre)
+		goto skip_udp_hdr;
 	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct udp_hdr));
 	if (outer) {
 		udp_hdr->src_port = rte_cpu_to_be_16(1514);
@@ -160,12 +163,15 @@ setup_pkt_udp_ip_headers(struct ipv4_hdr *ip_hdr,
 	/*
 	 * Initialize IP header.
 	 */
+skip_udp_hdr:
 	pkt_len = (uint16_t) (pkt_len + sizeof(struct ipv4_hdr));
 	ip_hdr->version_ihl   = IP_VHL_DEF;
 	ip_hdr->type_of_service   = 0;
 	ip_hdr->fragment_offset = 0;
 	ip_hdr->time_to_live   = IP_DEFTTL;
 	ip_hdr->next_proto_id = IPPROTO_UDP;
+	if (tx_nvgre)
+		ip_hdr->next_proto_id = 47;	//GRE
 	ip_hdr->packet_id = 0;
 	ip_hdr->total_length   = RTE_CPU_TO_BE_16(pkt_len);
 	if (outer) {
@@ -225,7 +231,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint64_t core_cycles;
 #endif
 	uint32_t nb_segs, pkt_len;
-	uint16_t tun_hdr_size = tx_vxlan ? sizeof(vxlan) : tx_geneve ? sizeof (geneve_hdr) : 0;
+	uint16_t tun_hdr_size = tx_vxlan ? sizeof(vxlan) : tx_geneve ? sizeof (geneve_hdr) : tx_nvgre ? sizeof(gre_hdr) : 0;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	start_tsc = rte_rdtsc();
@@ -244,6 +250,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		ol_flags |= PKT_TX_TUNNEL_VXLAN | PKT_TX_UDP_CKSUM;
 	if (tx_geneve)
 		ol_flags |= PKT_TX_TUNNEL_GENEVE | PKT_TX_UDP_CKSUM;
+	if (tx_nvgre)
+		ol_flags |= PKT_TX_TUNNEL_GRE | PKT_TX_UDP_CKSUM;
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = rte_mbuf_raw_alloc(mbp);
@@ -288,7 +296,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		ether_addr_copy(&ports[fs->tx_port].eth_addr, &eth_hdr.s_addr);
 		eth_hdr.ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 
-		if (tx_vxlan || tx_geneve) {
+		if (tx_vxlan || tx_geneve || tx_nvgre) {
 			ether_addr_copy(&peer_eth_addrs[fs->peer_addr],
 					&inner_eth_hdr.s_addr);
 			ether_addr_copy(&ports[fs->tx_port].eth_addr,
@@ -300,14 +308,15 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		 * Copy headers in first packet segment(s).
 		 */
 
-		if (tx_vxlan || tx_geneve) {
+		if (tx_vxlan || tx_geneve || tx_nvgre) {
 			copy_buf_to_pkt(&eth_hdr, sizeof(eth_hdr), pkt, 0);
 			copy_buf_to_pkt(&outer_pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
 					sizeof(struct ether_hdr));
-			copy_buf_to_pkt(&outer_pkt_udp_hdr,
-					sizeof(pkt_udp_hdr), pkt,
-					sizeof(struct ether_hdr) +
-					sizeof(struct ipv4_hdr));
+			if (!tx_nvgre)
+				copy_buf_to_pkt(&outer_pkt_udp_hdr,
+						sizeof(pkt_udp_hdr), pkt,
+						sizeof(struct ether_hdr) +
+						sizeof(struct ipv4_hdr));
 			if (tx_vxlan)
 				copy_buf_to_pkt(vxlan, sizeof(vxlan), pkt,
 						sizeof(struct ether_hdr) +
@@ -321,18 +330,21 @@ pkt_burst_transmit(struct fwd_stream *fs)
 			copy_buf_to_pkt(&inner_eth_hdr, sizeof(eth_hdr), pkt,
 					sizeof(struct ether_hdr) +
 					sizeof(struct ipv4_hdr) +
-					sizeof(pkt_udp_hdr) + tun_hdr_size);
+					(tx_nvgre ? 0 : sizeof(pkt_udp_hdr))
+					+ tun_hdr_size);
 			copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
 					sizeof(struct ether_hdr) +
 					sizeof(struct ether_hdr) +
 					sizeof(struct ipv4_hdr) +
-					sizeof(pkt_udp_hdr) + tun_hdr_size);
+					(tx_nvgre ? 0 : sizeof(pkt_udp_hdr))
+					+ tun_hdr_size);
 			copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
 					sizeof(struct ether_hdr) +
 					sizeof(struct ipv4_hdr) +
 					sizeof(struct ether_hdr) +
 					sizeof(struct ipv4_hdr) +
-					sizeof(pkt_udp_hdr) + tun_hdr_size);
+					(tx_nvgre ? 0 : sizeof(pkt_udp_hdr))
+					+ tun_hdr_size);
 		} else {
 			copy_buf_to_pkt(&eth_hdr, sizeof(eth_hdr), pkt, 0);
 			copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
@@ -354,8 +366,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		pkt->l2_len = sizeof(struct ether_hdr);
 		pkt->l3_len = sizeof(struct ipv4_hdr);
 
-		if (tx_vxlan || tx_geneve) {
-			pkt->l4_len = sizeof(struct udp_hdr);
+		if (tx_vxlan || tx_geneve || tx_nvgre) {
+			pkt->l4_len = tx_nvgre ? 0 : sizeof(struct udp_hdr);
 			pkt->outer_l3_len = sizeof(struct ipv4_hdr);
 			pkt->outer_l2_len = sizeof(struct ether_hdr);
 		}
@@ -404,12 +416,12 @@ tx_only_begin(__attribute__((unused)) portid_t pi)
 	uint16_t pkt_data_len;
 	uint16_t tun_hdr = 0;
 
-	tun_hdr = tx_vxlan ? sizeof(vxlan) : tx_geneve ? sizeof(geneve_hdr) : 0;
+	tun_hdr = tx_vxlan ? sizeof(vxlan) : tx_geneve ? sizeof(geneve_hdr) : tx_nvgre ? sizeof(gre_hdr) : 0;
 
 	pkt_data_len = (uint16_t) (tx_pkt_length - (sizeof(struct ether_hdr) +
 						    sizeof(struct ipv4_hdr) +
-						    sizeof(struct udp_hdr)));
-	if (tx_vxlan || tx_geneve) {
+						    tx_nvgre ? 0 : sizeof(struct udp_hdr)));
+	if (tx_vxlan || tx_geneve || tx_nvgre) {
 		setup_pkt_udp_ip_headers(&outer_pkt_ip_hdr, &outer_pkt_udp_hdr, pkt_data_len, 1);
 		pkt_data_len -= (uint16_t ) (sizeof(struct ether_hdr) +
                                                     sizeof(struct ipv4_hdr) +

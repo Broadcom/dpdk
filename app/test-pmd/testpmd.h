@@ -406,6 +406,7 @@ extern uint32_t burst_tx_retry_num;  /**< Burst tx retry number for mac-retry. *
 
 extern uint8_t tx_vxlan;
 extern uint8_t tx_geneve;
+extern uint8_t tx_nvgre;
 
 static inline unsigned int
 lcore_num(void)

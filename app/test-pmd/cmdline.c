@@ -265,7 +265,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set portlist (x[,y]*)\n"
 			"    Set the list of forwarding ports.\n\n"
 
-			"set tunnel (vxlan|geneve|none)\n"
+			"set tunnel (vxlan|geneve|nvgre|none)\n"
 			"    Set the Tunnel Mode.\n\n"
 
 #ifdef RTE_LIBRTE_IXGBE_PMD
@@ -4775,7 +4775,7 @@ cmdline_parse_token_string_t cmd_settunnel_tunnel =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, tunnel, "tunnel");
 cmdline_parse_token_string_t cmd_settunnel_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, mode,
-		"vxlan|geneve|none");
+		"" /* defined at init */);
 
 cmdline_parse_inst_t cmd_set_fwd_mode = {
 	.f = cmd_set_fwd_mode_parsed,
@@ -4792,7 +4792,7 @@ cmdline_parse_inst_t cmd_set_fwd_mode = {
 cmdline_parse_inst_t cmd_set_tunnel_mode = {
 	.f = cmd_set_tunnel_mode_parsed,
 	.data = NULL,
-	.help_str = "set tunnel vxlan|geneve|none", /* defined at init */
+	.help_str = "set tunnel vxlan|geneve|nvgre|none", /* defined at init */
 	.tokens = {
 		(void *)&cmd_settunnel_set,
 		(void *)&cmd_settunnel_tunnel,
@@ -10932,9 +10932,14 @@ cmd_set_vf_mac_anti_spoof_parsed(
 	struct cmd_vf_mac_anti_spoof_result *res = parsed_result;
 	int ret;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	struct rte_eth_dev *dev = &rte_eth_devices[res->port_id];
 
-	ret = rte_pmd_ixgbe_set_vf_mac_anti_spoof(res->port_id, res->vf_id,
-			is_on);
+	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0)
+		ret = rte_pmd_bnxt_set_vf_mac_anti_spoof(res->port_id,
+							res->vf_id, is_on);
+	else
+		ret = rte_pmd_ixgbe_set_vf_mac_anti_spoof(res->port_id,
+							res->vf_id, is_on);
 	switch (ret) {
 	case 0:
 		break;
@@ -11428,10 +11433,10 @@ cmd_set_vf_mac_addr_parsed(
 	int ret;
 	struct rte_eth_dev *dev = &rte_eth_devices[res->port_id];
 
-	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0)
+	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0) {
 		ret = rte_pmd_bnxt_set_vf_mac_addr(res->port_id, res->vf_id,
 			&res->mac_addr);
-	else
+	} else
 		ret = rte_pmd_ixgbe_set_vf_mac_addr(res->port_id, res->vf_id,
 			&res->mac_addr);
 	switch (ret) {
