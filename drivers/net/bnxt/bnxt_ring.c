@@ -96,6 +96,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	struct rte_pci_device *pdev = bp->pdev;
 	const struct rte_memzone *mz = NULL;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
+	phys_addr_t mz_phys_addr;
 
 	int stats_len = (tx_ring_info || rx_ring_info) ?
 	    RTE_CACHE_LINE_ROUNDUP(sizeof(struct ctx_hw_stats64)) : 0;
@@ -144,13 +145,18 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			return -ENOMEM;
 	}
 	memset(mz->addr, 0, mz->len);
+	mz_phys_addr = mz->phys_addr;
+	if ((phys_addr_t)mz->addr == mz_phys_addr) {
+		RTE_LOG(WARNING, PMD, "Memzone physical address same as virtual.  Using rte_mem_virt2phy()\n");
+		mz_phys_addr = rte_mem_virt2phy(mz->addr);
+	}
 
 	if (tx_ring_info) {
 		tx_ring = tx_ring_info->tx_ring_struct;
 
 		tx_ring->bd = ((char *)mz->addr + tx_ring_start);
 		tx_ring_info->tx_desc_ring = (struct tx_bd_long *)tx_ring->bd;
-		tx_ring->bd_dma = mz->phys_addr + tx_ring_start;
+		tx_ring->bd_dma = mz_phys_addr + tx_ring_start;
 		tx_ring_info->tx_desc_mapping = tx_ring->bd_dma;
 		tx_ring->mem_zone = (const void *)mz;
 
@@ -170,7 +176,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		rx_ring->bd = ((char *)mz->addr + rx_ring_start);
 		rx_ring_info->rx_desc_ring =
 		    (struct rx_prod_pkt_bd *)rx_ring->bd;
-		rx_ring->bd_dma = mz->phys_addr + rx_ring_start;
+		rx_ring->bd_dma = mz_phys_addr + rx_ring_start;
 		rx_ring_info->rx_desc_mapping = rx_ring->bd_dma;
 		rx_ring->mem_zone = (const void *)mz;
 
@@ -185,7 +191,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	}
 
 	cp_ring->bd = ((char *)mz->addr + cp_ring_start);
-	cp_ring->bd_dma = mz->phys_addr + cp_ring_start;
+	cp_ring->bd_dma = mz_phys_addr + cp_ring_start;
 	cp_ring_info->cp_desc_ring = cp_ring->bd;
 	cp_ring_info->cp_desc_mapping = cp_ring->bd_dma;
 	cp_ring->mem_zone = (const void *)mz;
@@ -196,7 +202,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		*cp_ring->vmem = ((char *)mz->addr + stats_len);
 	if (stats_len) {
 		cp_ring_info->hw_stats = mz->addr;
-		cp_ring_info->hw_stats_map = mz->phys_addr;
+		cp_ring_info->hw_stats_map = mz_phys_addr;
 	}
 	cp_ring_info->hw_stats_ctx_id = HWRM_NA_SIGNATURE;
 	return 0;
