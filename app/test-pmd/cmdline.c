@@ -4775,7 +4775,7 @@ cmdline_parse_token_string_t cmd_settunnel_tunnel =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, tunnel, "tunnel");
 cmdline_parse_token_string_t cmd_settunnel_mode =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_tunnel_mode_result, mode,
-		"vxlan|geneve|none");
+		"" /* defined at init */);
 
 cmdline_parse_inst_t cmd_set_fwd_mode = {
 	.f = cmd_set_fwd_mode_parsed,
