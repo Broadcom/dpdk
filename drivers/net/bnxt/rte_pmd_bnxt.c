@@ -260,12 +260,14 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	else
 		func_flags &= ~HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK;
 
-	rc = bnxt_hwrm_func_cfg_set_vf_mac_spoof(bp, vf, func_flags);
+	bp->pf.vf_info[vf].func_cfg_flags = func_flags;
+
+	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf);
 	if (!rc) {
-		bp->pf.vf_info[vf].func_cfg_flags = func_flags;
-		bp->pf.vf_info[vf].mac_spoof_en = 1;
-	} else {
-		bp->pf.vf_info[vf].mac_spoof_en = 0;
+		if (on)
+			bp->pf.vf_info[vf].mac_spoof_en = 1;
+		else
+			bp->pf.vf_info[vf].mac_spoof_en = 0;
 	}
 
 	return rc;
