@@ -11433,10 +11433,10 @@ cmd_set_vf_mac_addr_parsed(
 	int ret;
 	struct rte_eth_dev *dev = &rte_eth_devices[res->port_id];
 
-	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0) {
+	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0)
 		ret = rte_pmd_bnxt_set_vf_mac_addr(res->port_id, res->vf_id,
 			&res->mac_addr);
-	} else
+	else
 		ret = rte_pmd_ixgbe_set_vf_mac_addr(res->port_id, res->vf_id,
 			&res->mac_addr);
 	switch (ret) {
