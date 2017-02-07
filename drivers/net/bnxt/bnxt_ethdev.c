@@ -1119,9 +1119,13 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 	int ret;
 	int rc = 0;
 
+	if (!bp->pf.vf_info)
+		return -EINVAL;
+
 	for (i=0; vf_mask; i++, vf_mask >>= 1) {
 		if (vf_mask & 1) {
-			ret = bnxt_hwrm_set_vf_vlan(bp, i, vlan_on ? vlan : 0);
+			bp->pf.vf_info[i].dflt_vlan = vlan_on ? vlan : 0;
+			ret = bnxt_hwrm_set_vf_vlan(bp, i);
 			if (ret)
 				rc = ret;
 		}

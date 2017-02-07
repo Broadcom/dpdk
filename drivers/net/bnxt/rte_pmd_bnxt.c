@@ -264,3 +264,32 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 
 	return rc;
 }
+
+int
+rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
+		uint16_t vlan_id)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct bnxt *bp;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to set VF %d vlan insert on non-PF port %d!\n",
+				vf, port);
+		return -ENOTSUP;
+	}
+
+	if (vlan_id != bp->pf.vf_info[vf].dflt_vlan)
+		return -ENOTSUP;
+
+	return 0;
+}
