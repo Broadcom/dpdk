@@ -1092,6 +1092,31 @@ int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf, uint8_t *mac_addr)
 	return rc;
 }
 
+int bnxt_hwrm_func_vf_dflt_vlan(struct bnxt *bp, uint16_t vf, uint16_t vlan, bool on)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
+	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_VLAN);
+	req.dflt_vlan = rte_cpu_to_le_16(on ? vlan : 0);
+#if 0
+	req.enables |= rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_VLAN_ANTISPOOF_MODE);
+	req.vlan_antispoof_mode = on ?
+			HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_INSERT_OR_OVERRIDE_VLAN :
+			HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_NOCHECK;
+#endif
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)
 {
 	int rc = 0;
