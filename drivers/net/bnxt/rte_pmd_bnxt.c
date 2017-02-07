@@ -264,10 +264,7 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 
 	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf);
 	if (!rc) {
-		if (on)
-			bp->pf.vf_info[vf].mac_spoof_en = 1;
-		else
-			bp->pf.vf_info[vf].mac_spoof_en = 0;
+		bp->pf.vf_info[vf].mac_spoof_en = on;
 	}
 
 	return rc;
