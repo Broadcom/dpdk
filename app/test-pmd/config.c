@@ -1804,6 +1804,29 @@ set_pkt_forwarding_mode(const char *fwd_mode_name)
 }
 
 void
+set_tunnel_mode(const char *tunnel_mode_name)
+{
+	if (! strcmp(cur_fwd_eng->fwd_mode_name, "txonly")) {
+		if (! strcmp(tunnel_mode_name, "vxlan")) {
+			tx_vxlan = 1;
+			tx_geneve = 0;
+		} else if (! strcmp(tunnel_mode_name, "geneve")) {
+			tx_geneve = 1;
+			tx_vxlan = 0;
+		} else if (! strcmp(tunnel_mode_name, "none")) {
+			tx_vxlan = 0;
+			tx_geneve = 0;
+		} else {
+			printf("Unknown Tunnel mode\n");
+		}
+		return;
+	}
+
+	printf("Invalid %s packet forwarding mode\n", cur_fwd_eng->fwd_mode_name);
+	printf("Configure Tx only mode\n");
+}
+
+void
 set_verbose_level(uint16_t vb_level)
 {
 	printf("Change verbose level from %u to %u\n",

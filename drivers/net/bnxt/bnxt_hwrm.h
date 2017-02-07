@@ -115,5 +115,9 @@ int bnxt_hwrm_pf_evb_mode(struct bnxt *bp);
 int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
 			uint16_t max_bw, uint16_t enables);
 int bnxt_hwrm_set_vf_vlan(struct bnxt *bp, int vf, uint16_t vlan);
-
+int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
+				uint8_t tunnel_type);
+int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
+				uint8_t tunnel_type);
+void bnxt_free_tunnel_ports(struct bnxt *bp);
 #endif

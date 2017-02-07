@@ -112,6 +112,8 @@ struct ctx_hw_stats64 {
 #define HWRM_CFA_L2_FILTER_FREE		(UINT32_C(0x91))
 #define HWRM_CFA_L2_FILTER_CFG		(UINT32_C(0x92))
 #define HWRM_CFA_L2_SET_RX_MASK		(UINT32_C(0x93))
+#define HWRM_TUNNEL_DST_PORT_ALLOC	(UINT32_C(0xa1))
+#define HWRM_TUNNEL_DST_PORT_FREE	(UINT32_C(0xa2))
 #define HWRM_STAT_CTX_ALLOC		(UINT32_C(0xb0))
 #define HWRM_STAT_CTX_FREE		(UINT32_C(0xb1))
 #define HWRM_STAT_CTX_CLR_STATS		(UINT32_C(0xb3))
@@ -6559,6 +6561,188 @@ struct hwrm_cfa_l2_set_rx_mask_output {
 	 * this field is written last.
 	 */
 } __attribute__((packed));
+
+/* hwrm_tunnel_dst_port_alloc */
+/*
+ * Description: This function is called by a driver to allocate l4 destination
+ * port for a specific tunnel type. The destination port value is provided in
+ * the input. If the HWRM supports only one global destination port for a tunnel
+ * type, then the HWRM shall keep track of its usage as described below. # The
+ * first caller that allocates a destination port shall always succeed and the
+ * HWRM shall save the destination port configuration for that tunnel type and
+ * increment the usage count to 1. # Subsequent callers allocating the same
+ * destination port for that tunnel type shall succeed and the HWRM shall
+ * increment the usage count for that port for each subsequent caller that
+ * succeeds. # Any subsequent caller trying to allocate a different destination
+ * port for that tunnel type shall fail until the usage count for the original
+ * destination port goes to zero. # A caller that frees a port will cause the
+ * usage count for that port to decrement.
+ */
+/* Input (24 bytes) */
+struct hwrm_tunnel_dst_port_alloc_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint8_t tunnel_type;
+	/* Tunnel Type. */
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_VXLAN       UINT32_C(0x1)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define TUNNEL_DST_PORT_ALLOC_REQ_TUNNEL_TYPE_GENEVE      UINT32_C(0x5)
+	uint8_t unused_0;
+	uint16_t tunnel_dst_port_val;
+	/*
+	 * This field represents the value of L4 destination port used
+	 * for the given tunnel type. This field is valid for specific
+	 * tunnel types that use layer 4 (e.g. UDP) transports for
+	 * tunneling. This field is in network byte order. A value of 0
+	 * shall fail the command.
+	 */
+	uint32_t unused_1;
+};
+
+/* Output (16 bytes) */
+struct hwrm_tunnel_dst_port_alloc_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint16_t tunnel_dst_port_id;
+	/*
+	 * Identifier of a tunnel L4 destination port value. Only
+	 * applies to tunnel types that has l4 destination port
+	 * parameters.
+	 */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t unused_4;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+};
+
+/* hwrm_tunnel_dst_port_free */
+/*
+ * Description: This function is called by a driver to free l4 destination port
+ * for a specific tunnel type.
+ */
+/* Input (24 bytes) */
+struct hwrm_tunnel_dst_port_free_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint8_t tunnel_type;
+	/* Tunnel Type. */
+	/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_VXLAN	   UINT32_C(0x1)
+	/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define TUNNEL_DST_PORT_FREE_REQ_TUNNEL_TYPE_GENEVE       UINT32_C(0x5)
+	uint8_t unused_0;
+	uint16_t tunnel_dst_port_id;
+	/*
+	 * Identifier of a tunnel L4 destination port value. Only
+	 * applies to tunnel types that has l4 destination port
+	 * parameters.
+	 */
+	uint32_t unused_1;
+};
+
+/* Output (16 bytes) */
+struct hwrm_tunnel_dst_port_free_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+};
 
 /* hwrm_stat_ctx_alloc */
 /*
