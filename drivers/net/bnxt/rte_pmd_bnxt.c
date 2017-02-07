@@ -77,6 +77,13 @@ int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
 	return rc;
 }
 
+static void
+rte_pmd_bnxt_set_all_queues_drop_en_cb(struct bnxt_vnic_info *vnic, void *onptr)
+{
+	uint8_t *on = onptr;
+	vnic->bd_stall = !(*on);
+}
+
 int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 {
 	struct rte_eth_dev *eth_dev;
@@ -112,7 +119,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 
 	/* Stall all active VFs */
 	for (i = 0; i < bp->pf.active_vfs; i++) {
-		rc = bnxt_hwrm_func_vf_stall(bp, i, !on);
+		rc = bnxt_hwrm_func_vf_vnic_cfg_do(bp, i, rte_pmd_bnxt_set_all_queues_drop_en_cb, &on);
 		if (rc) {
 			RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", i);
 			break;
@@ -220,3 +227,40 @@ int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, uint16_t type,
 	return _rte_callback_process(bp, &cb_param);
 }
 
+static void
+rte_pmd_bnxt_set_vf_vlan_stripq_cb(struct bnxt_vnic_info *vnic, void *onptr)
+{
+	uint8_t *on = onptr;
+	vnic->vlan_strip = *on;
+}
+
+int
+rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct bnxt *bp;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to set VF %d stripq on non-PF port %d!\n",
+				vf, port);
+		return -ENOTSUP;
+	}
+
+	rc = bnxt_hwrm_func_vf_vnic_cfg_do(bp, vf, rte_pmd_bnxt_set_vf_vlan_stripq_cb, &on);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", vf);
+	}
+
+	return rc;
+}
