@@ -153,4 +153,21 @@ struct rte_pmd_bnxt_mb_event_param {
 	void 	*msg;      /**< pointer to message */
 };
 
+/**
+ * Enable/Disable VF MAC anti spoof
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param on
+ *    1 - Enable VF MAC anti spoof.
+ *    0 - Disable VF MAC anti spoof.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
 #endif /* _PMD_BNXT_H_ */
