@@ -220,3 +220,56 @@ int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, uint16_t type,
 	return _rte_callback_process(bp, &cb_param);
 }
 
+int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_dev *dev;
+	uint32_t func_flags;
+	struct bnxt *bp;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (on > 1)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "Attempt to set mac spoof on non-PF port %d!\n",
+				port);
+		return -EINVAL;
+	}
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)	
+		return -EINVAL;
+
+	/* Prev setting same as new setting. */
+	if (on == bp->pf.vf_info[vf].mac_spoof_en)
+		return 0;
+
+	func_flags = bp->pf.vf_info[vf].func_cfg_flags;
+
+	if (on)
+		func_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK;
+	else
+		func_flags &= ~HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK;
+
+	bp->pf.vf_info[vf].func_cfg_flags = func_flags;
+
+	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf);
+	if (!rc) {
+		if (on)
+			bp->pf.vf_info[vf].mac_spoof_en = 1;
+		else
+			bp->pf.vf_info[vf].mac_spoof_en = 0;
+	}
+
+	return rc;
+}
+
