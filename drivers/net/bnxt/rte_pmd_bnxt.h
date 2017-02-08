@@ -148,8 +148,7 @@ enum rte_pmd_bnxt_mb_event_rsp {
  */
 struct rte_pmd_bnxt_mb_event_param {
 	uint16_t vf_id;     /**< Virtual Function number */
-	uint16_t msg_type; /**< VF to PF message type */
-	int16_t  retval;   /**< return value */
+	int	retval;   /**< return value */
 	void 	*msg;      /**< pointer to message */
 };
 

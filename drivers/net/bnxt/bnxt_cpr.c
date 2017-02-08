@@ -100,8 +100,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 		goto reject;
 	}
 
-	if (bnxt_rcv_msg_from_vf(bp, fw_vf_id - bp->pf.first_vf_id,
-			rte_le_to_cpu_16(fwd_cmd->req_type), fwd_cmd) == true) {
+	if (bnxt_rcv_msg_from_vf(bp, fw_vf_id - bp->pf.first_vf_id, fwd_cmd) == true) {
 		/* Forward */
 		rc = bnxt_hwrm_exec_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
 		if (rc) {
