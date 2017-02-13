@@ -123,5 +123,6 @@ int bnxt_hwrm_func_vf_vnic_cfg_do(struct bnxt *bp, uint16_t vf,
 				  void (*vnic_cb)(struct bnxt_vnic_info *, void *),
 				  void *cbdata);
 int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf);
+int bnxt_hwrm_func_vf_vnic_set_rxmask(struct bnxt *bp, uint16_t vf);
 
 #endif

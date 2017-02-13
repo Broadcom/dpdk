@@ -211,8 +211,15 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
 	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
 		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
-	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
-				    mask);
+	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
+		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
+	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
+		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
+
+	if (vnic->flags & BNXT_VNIC_INFO_BCAST)
+			mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
+
+	req.mask = rte_cpu_to_le_32(mask);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -2158,6 +2165,61 @@ int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf)
 	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_func_vf_vnic_set_rxmask(struct bnxt *bp, uint16_t vf)
+{
+	struct hwrm_func_vf_vnic_ids_query_input req = {0};
+	struct hwrm_func_vf_vnic_ids_query_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_vnic_info vnic;
+	int rc;
+	uint32_t i, num_vnic_ids;
+	uint16_t *vnic_ids;
+	size_t vnic_id_sz;
+
+	/* First query all VNIC ids */
+
+	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
+	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
+			RTE_CACHE_LINE_SIZE);
+	if (vnic_ids == NULL) {
+		rc = -ENOMEM;
+		return rc;
+	}
+	for (i = 0; i< vnic_id_sz; i+=rte_eal_get_physmem_size()) {
+		rte_mem_lock_page(((char *)vnic_ids) + i);
+	}
+
+	HWRM_PREP(req, FUNC_VF_VNIC_IDS_QUERY, -1, resp_vf_vnic_ids);
+
+	req.vf_id = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
+	req.max_vnic_id_cnt = rte_cpu_to_le_32(bp->pf.total_vnics);
+	req.vnic_id_tbl_addr = rte_mem_virt2phy(vnic_ids);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	num_vnic_ids = rte_le_to_cpu_32(resp->vnic_id_cnt);
+
+	/* Retrieve VNIC, update bd_stall then update */
+
+	for (i = 0; i < num_vnic_ids; i++) {
+		memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
+		vnic.fw_vnic_id = rte_le_to_cpu_16(vnic_ids[i]);
+		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf);
+		if (rc)
+			break;
+
+		vnic.flags = bp->pf.vf_info[vf].l2_rx_mask;
+
+		rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &vnic);
+		if (rc)
+			break;
+	}
+
+	rte_free(vnic_ids);
 
 	return rc;
 }
