@@ -2099,7 +2099,31 @@ int bnxt_hwrm_set_vf_vlan(struct bnxt *bp, int vf)
 	return rc;
 }
 
-int bnxt_hwrm_func_vf_vnic_cfg_do(struct bnxt *bp, uint16_t vf, void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata)
+int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp)
+{
+	uint32_t *flag = flagp;
+
+	vnic->flags = *flag;
+}
+
+int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
+	void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata,
+	int (*hwrm_do_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic))
 {
 	struct hwrm_func_vf_vnic_ids_query_input req = {0};
 	struct hwrm_func_vf_vnic_ids_query_output *resp = bp->hwrm_cmd_resp_addr;
@@ -2144,77 +2168,7 @@ int bnxt_hwrm_func_vf_vnic_cfg_do(struct bnxt *bp, uint16_t vf, void (*vnic_cb)(
 
 		vnic_cb(&vnic, cbdata);
 
-		rc = bnxt_hwrm_vnic_cfg(bp, &vnic);
-		if (rc)
-			break;
-	}
-
-	rte_free(vnic_ids);
-
-	return rc;
-}
-
-int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf)
-{
-	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
-	struct hwrm_func_cfg_input req = {0};
-	int rc;
-
-	HWRM_PREP(req, FUNC_CFG, -1, resp);
-	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
-	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
-	HWRM_CHECK_RESULT;
-
-	return rc;
-}
-
-int bnxt_hwrm_func_vf_vnic_set_rxmask(struct bnxt *bp, uint16_t vf)
-{
-	struct hwrm_func_vf_vnic_ids_query_input req = {0};
-	struct hwrm_func_vf_vnic_ids_query_output *resp = bp->hwrm_cmd_resp_addr;
-	struct bnxt_vnic_info vnic;
-	int rc;
-	uint32_t i, num_vnic_ids;
-	uint16_t *vnic_ids;
-	size_t vnic_id_sz;
-
-	/* First query all VNIC ids */
-
-	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
-	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
-			RTE_CACHE_LINE_SIZE);
-	if (vnic_ids == NULL) {
-		rc = -ENOMEM;
-		return rc;
-	}
-	for (i = 0; i< vnic_id_sz; i+=rte_eal_get_physmem_size()) {
-		rte_mem_lock_page(((char *)vnic_ids) + i);
-	}
-
-	HWRM_PREP(req, FUNC_VF_VNIC_IDS_QUERY, -1, resp_vf_vnic_ids);
-
-	req.vf_id = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
-	req.max_vnic_id_cnt = rte_cpu_to_le_32(bp->pf.total_vnics);
-	req.vnic_id_tbl_addr = rte_mem_virt2phy(vnic_ids);
-
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
-	HWRM_CHECK_RESULT;
-
-	num_vnic_ids = rte_le_to_cpu_32(resp->vnic_id_cnt);
-
-	/* Retrieve VNIC, update bd_stall then update */
-
-	for (i = 0; i < num_vnic_ids; i++) {
-		memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
-		vnic.fw_vnic_id = rte_le_to_cpu_16(vnic_ids[i]);
-		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf);
-		if (rc)
-			break;
-
-		vnic.flags = bp->pf.vf_info[vf].l2_rx_mask;
-
-		rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &vnic);
+		rc = hwrm_do_cb(bp, &vnic);
 		if (rc)
 			break;
 	}

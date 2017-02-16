@@ -1175,7 +1175,10 @@ static int bnxt_set_vf_rx_mode_op(struct rte_eth_dev *dev, uint16_t vf,
 	else
 		bp->pf.vf_info[vf].l2_rx_mask &= ~flag;
 
-	rc = bnxt_hwrm_func_vf_vnic_set_rxmask(bp, vf);
+	rc = bnxt_hwrm_func_vf_vnic_query_and_config(bp, vf,
+					vf_vnic_set_rxmask_cb,
+					&bp->pf.vf_info[vf].l2_rx_mask,
+					bnxt_hwrm_cfa_l2_set_rx_mask);
 	if (rc)
 		RTE_LOG(ERR, PMD, "bnxt_hwrm_func_vf_vnic_set_rxmask failed\n");
 
