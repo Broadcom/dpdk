@@ -1147,28 +1147,20 @@ static int bnxt_set_vf_rx_mode_op(struct rte_eth_dev *dev, uint16_t vf,
 	if (vf >= bp->pdev->max_vfs)
 		return -EINVAL;
 
-	switch (rx_mask) {
-	case ETH_VMDQ_ACCEPT_UNTAG:
+	if (rx_mask & (ETH_VMDQ_ACCEPT_UNTAG | ETH_VMDQ_ACCEPT_HASH_MC)) {
 		RTE_LOG(ERR, PMD, "Currently cannot toggle this setting\n");
-		return -ENOTSUP;
-	case ETH_VMDQ_ACCEPT_BROADCAST:
-		flag = BNXT_VNIC_INFO_BCAST;
-		break;
-	case ETH_VMDQ_ACCEPT_MULTICAST:
-		flag = BNXT_VNIC_INFO_ALLMULTI;
-		break;
-	case ETH_VMDQ_ACCEPT_HASH_UC:
-		if (!on) {
-			RTE_LOG(ERR, PMD, "Currently cannot disable UC\n");
-			return -ENOTSUP;
-		}
-		return 0;
-	case ETH_VMDQ_ACCEPT_HASH_MC:
-		RTE_LOG(ERR, PMD, "Currently cannot toggle this setting\n");
-		return -ENOTSUP;
-	default:
 		return -ENOTSUP;
 	}
+
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC && !on) {
+		RTE_LOG(ERR, PMD, "Currently cannot disable UC Rx\n");
+		return -ENOTSUP;
+	}
+
+	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
+		flag = BNXT_VNIC_INFO_BCAST;
+	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
+		flag = BNXT_VNIC_INFO_ALLMULTI;
 
 	if (on)
 		bp->pf.vf_info[vf].l2_rx_mask |= flag;

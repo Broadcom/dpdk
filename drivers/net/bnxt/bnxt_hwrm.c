@@ -207,17 +207,17 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	/* FIXME add multicast flag, when multicast adding options is supported
 	 * by ethtool.
 	 */
-	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
-		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
-	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
-		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
-	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
-		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
-	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
-		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
-
 	if (vnic->flags & BNXT_VNIC_INFO_BCAST)
-			mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
+			mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
+
+	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
+	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
+	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
+	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
 
 	req.mask = rte_cpu_to_le_32(mask);
 
@@ -2121,9 +2121,14 @@ void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp)
 	vnic->flags = *flag;
 }
 
+/*
+ * This function queries the VNIC IDs  for a specified VF. It then calls
+ * the vnic_cb to update the necessary field in vnic_info with cbdata.
+ * Then it calls the hwrm_cb function to program this new vnic configuration.
+ */
 int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata,
-	int (*hwrm_do_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic))
+	int (*hwrm_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic))
 {
 	struct hwrm_func_vf_vnic_ids_query_input req = {0};
 	struct hwrm_func_vf_vnic_ids_query_output *resp = bp->hwrm_cmd_resp_addr;
@@ -2168,7 +2173,7 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 
 		vnic_cb(&vnic, cbdata);
 
-		rc = hwrm_do_cb(bp, &vnic);
+		rc = hwrm_cb(bp, &vnic);
 		if (rc)
 			break;
 	}
