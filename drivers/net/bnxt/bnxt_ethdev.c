@@ -1149,8 +1149,8 @@ static int bnxt_set_vf_rx_mode_op(struct rte_eth_dev *dev, uint16_t vf,
 
 	switch (rx_mask) {
 	case ETH_VMDQ_ACCEPT_UNTAG:
-		flag = BNXT_VNIC_INFO_UNTAGGED;
-		break;
+		RTE_LOG(ERR, PMD, "Currently cannot toggle this setting\n");
+		return -ENOTSUP;
 	case ETH_VMDQ_ACCEPT_BROADCAST:
 		flag = BNXT_VNIC_INFO_BCAST;
 		break;
