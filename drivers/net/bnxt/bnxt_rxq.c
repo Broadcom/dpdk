@@ -76,6 +76,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto err_out;
 		}
+		vnic->flags |= BNXT_VNIC_INFO_BCAST;
 		STAILQ_INSERT_TAIL(&bp->ff_pool[0], vnic, next);
 		bp->nr_vnics++;
 
@@ -140,6 +141,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 				rc = -ENOMEM;
 				goto err_out;
 			}
+			vnic->flags |= BNXT_VNIC_INFO_BCAST;
 			STAILQ_INSERT_TAIL(&bp->ff_pool[i], vnic, next);
 			bp->nr_vnics++;
 
@@ -180,6 +182,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		rc = -ENOMEM;
 		goto err_out;
 	}
+	vnic->flags |= BNXT_VNIC_INFO_BCAST;
 	/* Partition the rx queues for the single pool */
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		rxq = bp->eth_dev->data->rx_queues[i];

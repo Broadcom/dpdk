@@ -119,7 +119,9 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 
 	/* Stall all active VFs */
 	for (i = 0; i < bp->pf.active_vfs; i++) {
-		rc = bnxt_hwrm_func_vf_vnic_cfg_do(bp, i, rte_pmd_bnxt_set_all_queues_drop_en_cb, &on);
+		rc = bnxt_hwrm_func_vf_vnic_query_and_config(bp, i,
+				rte_pmd_bnxt_set_all_queues_drop_en_cb, &on,
+				bnxt_hwrm_vnic_cfg);
 		if (rc) {
 			RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", i);
 			break;
@@ -256,7 +258,9 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 		return -ENOTSUP;
 	}
 
-	rc = bnxt_hwrm_func_vf_vnic_cfg_do(bp, vf, rte_pmd_bnxt_set_vf_vlan_stripq_cb, &on);
+	rc = bnxt_hwrm_func_vf_vnic_query_and_config(bp, vf,
+				rte_pmd_bnxt_set_vf_vlan_stripq_cb, &on,
+				bnxt_hwrm_vnic_cfg);
 	if (rc) {
 		RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", vf);
 	}

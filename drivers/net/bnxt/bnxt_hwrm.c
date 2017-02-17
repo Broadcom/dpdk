@@ -207,12 +207,19 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	/* FIXME add multicast flag, when multicast adding options is supported
 	 * by ethtool.
 	 */
+	if (vnic->flags & BNXT_VNIC_INFO_BCAST)
+			mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
+
 	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
-		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
+	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
 	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
-		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
-	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
-				    mask);
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
+	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
+
+	req.mask = rte_cpu_to_le_32(mask);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -2092,7 +2099,36 @@ int bnxt_hwrm_set_vf_vlan(struct bnxt *bp, int vf)
 	return rc;
 }
 
-int bnxt_hwrm_func_vf_vnic_cfg_do(struct bnxt *bp, uint16_t vf, void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata)
+int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp)
+{
+	uint32_t *flag = flagp;
+
+	vnic->flags = *flag;
+}
+
+/*
+ * This function queries the VNIC IDs  for a specified VF. It then calls
+ * the vnic_cb to update the necessary field in vnic_info with cbdata.
+ * Then it calls the hwrm_cb function to program this new vnic configuration.
+ */
+int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
+	void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata,
+	int (*hwrm_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic))
 {
 	struct hwrm_func_vf_vnic_ids_query_input req = {0};
 	struct hwrm_func_vf_vnic_ids_query_output *resp = bp->hwrm_cmd_resp_addr;
@@ -2137,27 +2173,12 @@ int bnxt_hwrm_func_vf_vnic_cfg_do(struct bnxt *bp, uint16_t vf, void (*vnic_cb)(
 
 		vnic_cb(&vnic, cbdata);
 
-		rc = bnxt_hwrm_vnic_cfg(bp, &vnic);
+		rc = hwrm_cb(bp, &vnic);
 		if (rc)
 			break;
 	}
 
 	rte_free(vnic_ids);
-
-	return rc;
-}
-
-int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf)
-{
-	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
-	struct hwrm_func_cfg_input req = {0};
-	int rc;
-
-	HWRM_PREP(req, FUNC_CFG, -1, resp);
-	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
-	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
-	HWRM_CHECK_RESULT;
 
 	return rc;
 }
