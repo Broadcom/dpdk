@@ -1158,9 +1158,9 @@ static int bnxt_set_vf_rx_mode_op(struct rte_eth_dev *dev, uint16_t vf,
 	}
 
 	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
-		flag = BNXT_VNIC_INFO_BCAST;
+		flag |= BNXT_VNIC_INFO_BCAST;
 	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
-		flag = BNXT_VNIC_INFO_ALLMULTI;
+		flag |= BNXT_VNIC_INFO_ALLMULTI;
 
 	if (on)
 		bp->pf.vf_info[vf].l2_rx_mask |= flag;
