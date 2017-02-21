@@ -90,6 +90,8 @@ struct ctx_hw_stats64 {
 #define HWRM_FUNC_QCAPS			(UINT32_C(0x15))
 #define HWRM_FUNC_QCFG			(UINT32_C(0x16))
 #define HWRM_FUNC_CFG			(UINT32_C(0x17))
+#define HWRM_FUNC_QSTATS		(UINT32_C(0x18))
+#define HWRM_FUNC_CLR_STATS		(UINT32_C(0x19))
 #define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
 #define HWRM_FUNC_VF_VNIC_IDS_QUERY	(UINT32_C(0x1c))
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
@@ -2761,6 +2763,215 @@ struct hwrm_func_cfg_output {
 	 * command completion or response to an internal processor, the order of
 	 * writes has to be such that this field is written last.
 	 */
+} __attribute__((packed));
+
+/* hwrm_func_qstats */
+/*
+ * Description: This command returns statistics of a function. The input FID
+ * value is used to indicate what function is being queried. This allows a
+ * physical function driver to query virtual functions that are children of the
+ * physical function. The HWRM shall return any unsupported counter with a value
+ * of 0xFFFFFFFF for 32-bit counters and 0xFFFFFFFFFFFFFFFF for 64-bit counters.
+ */
+/* Input (24 bytes) */
+
+struct hwrm_func_qstats_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint16_t fid;
+    /*
+     * Function ID of the function that is being queried. 0xFF... (All Fs)
+     * if the query is for the requesting function.
+     */
+    uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (176 bytes) */
+
+struct hwrm_func_qstats_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint64_t tx_ucast_pkts;
+    /* Number of transmitted unicast packets on the function. */
+    uint64_t tx_mcast_pkts;
+    /* Number of transmitted multicast packets on the function. */
+    uint64_t tx_bcast_pkts;
+    /* Number of transmitted broadcast packets on the function. */
+    uint64_t tx_err_pkts;
+    /*
+     * Number of transmitted packets that were dropped due to internal NIC
+     * resource problems. For transmit, this can only happen if TMP is
+     * configured to allow dropping in HOL blocking conditions, which is not
+     * a normal configuration.
+     */
+    uint64_t tx_drop_pkts;
+    /*
+     * Number of dropped packets on transmit path on the function. These are
+     * packets that have been marked for drop by the TE CFA block or are
+     * packets that exceeded the transmit MTU limit for the function.
+     */
+    uint64_t tx_ucast_bytes;
+    /* Number of transmitted bytes for unicast traffic on the function. */
+    uint64_t tx_mcast_bytes;
+    /* Number of transmitted bytes for multicast traffic on the function. */
+    uint64_t tx_bcast_bytes;
+    /* Number of transmitted bytes for broadcast traffic on the function. */
+    uint64_t rx_ucast_pkts;
+    /* Number of received unicast packets on the function. */
+    uint64_t rx_mcast_pkts;
+    /* Number of received multicast packets on the function. */
+    uint64_t rx_bcast_pkts;
+    /* Number of received broadcast packets on the function. */
+    uint64_t rx_err_pkts;
+    /*
+     * Number of received packets that were dropped on the function due to
+     * resource limitations. This can happen for 3 reasons. # The BD used
+     * for the packet has a bad format. # There were no BDs available in the
+     * ring for the packet. # There were no BDs available on-chip for the
+     * packet.
+     */
+    uint64_t rx_drop_pkts;
+    /*
+     * Number of dropped packets on received path on the function. These are
+     * packets that have been marked for drop by the RE CFA.
+     */
+    uint64_t rx_ucast_bytes;
+    /* Number of received bytes for unicast traffic on the function. */
+    uint64_t rx_mcast_bytes;
+    /* Number of received bytes for multicast traffic on the function. */
+    uint64_t rx_bcast_bytes;
+    /* Number of received bytes for broadcast traffic on the function. */
+    uint64_t rx_agg_pkts;
+    /* Number of aggregated unicast packets on the function. */
+    uint64_t rx_agg_bytes;
+    /* Number of aggregated unicast bytes on the function. */
+    uint64_t rx_agg_events;
+    /* Number of aggregation events on the function. */
+    uint64_t rx_agg_aborts;
+    /* Number of aborted aggregations on the function. */
+    uint32_t unused_0;
+    uint8_t unused_1;
+    uint8_t unused_2;
+    uint8_t unused_3;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+} __attribute__((packed));
+
+/* hwrm_func_clr_stats */
+/*
+ * Description: This command clears statistics of a function. The input FID
+ * value is used to indicate what function's statistics is being cleared. This
+ * allows a physical function driver to clear statistics of virtual functions
+ * that are children of the physical function.
+ */
+/* Input (24 bytes) */
+
+struct hwrm_func_clr_stats_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint16_t fid;
+    /*
+     * Function ID of the function. 0xFF... (All Fs) if the query is for the
+     * requesting function.
+     */
+    uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+
+struct hwrm_func_clr_stats_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint32_t unused_0;
+    uint8_t unused_1;
+    uint8_t unused_2;
+    uint8_t unused_3;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
 } __attribute__((packed));
 
 /* hwrm_func_drv_rgtr */
