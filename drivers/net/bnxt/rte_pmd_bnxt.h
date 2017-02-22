@@ -169,4 +169,40 @@ struct rte_pmd_bnxt_mb_event_param {
  *   - (-EINVAL) if bad parameter.
  */
 int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
+
+/**
+ * Get VF's statistics
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    VF on which to get.
+ * @param stats
+ *    A pointer to a structure of type *rte_eth_stats* to be filled with
+ *    the values of device counters supported statistics:
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+
+int rte_pmd_bnxt_get_vf_stats(uint8_t port,
+			      uint16_t vf_id,
+			      struct rte_eth_stats *stats);
+
+/**
+ * Clear VF's statistics
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    VF on which to get.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
+				uint16_t vf_id);
+
 #endif /* _PMD_BNXT_H_ */
