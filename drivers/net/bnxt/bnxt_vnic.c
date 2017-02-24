@@ -193,6 +193,10 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	if ((phys_addr_t)mz->addr == mz_phys_addr) {
 		RTE_LOG(WARNING, PMD, "Memzone physical address same as virtual.  Using rte_mem_virt2phy()\n");
 		mz_phys_addr = rte_mem_virt2phy(mz->addr);
+		if (mz_phys_addr == 0) {
+			RTE_LOG(ERR, PMD, "unable to map vnic address to physical memory\n");
+			return -ENOMEM;
+		}
 	}
 
 	for (i = 0; i < max_vnics; i++) {
