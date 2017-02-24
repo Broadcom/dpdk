@@ -278,7 +278,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	int rc = 0;
 
 	if (!nb_desc || nb_desc > MAX_RX_DESC_CNT) {
-		RTE_LOG(ERR, PMD, "nb_desc %d is invalid", nb_desc);
+		RTE_LOG(ERR, PMD, "nb_desc %d is invalid\n", nb_desc);
 		rc = -EINVAL;
 		goto out;
 	}
@@ -291,7 +291,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq = rte_zmalloc_socket("bnxt_rx_queue", sizeof(struct bnxt_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
-		RTE_LOG(ERR, PMD, "bnxt_rx_queue allocation failed!");
+		RTE_LOG(ERR, PMD, "bnxt_rx_queue allocation failed!\n");
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -313,7 +313,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	/* Allocate RX ring hardware descriptors */
 	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq->rx_ring, rxq->cp_ring,
 			"rxr")) {
-		RTE_LOG(ERR, PMD, "ring_dma_zone_reserve for rx_ring failed!");
+		RTE_LOG(ERR, PMD, "ring_dma_zone_reserve for rx_ring failed!\n");
 		bnxt_rx_queue_release_op(rxq);
 		rc = -ENOMEM;
 		goto out;

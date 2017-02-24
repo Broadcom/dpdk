@@ -245,7 +245,7 @@ int bnxt_alloc_vnic_mem(struct bnxt *bp)
 	vnic_mem = rte_zmalloc("bnxt_vnic_info",
 			       max_vnics * sizeof(struct bnxt_vnic_info), 0);
 	if (vnic_mem == NULL) {
-		RTE_LOG(ERR, PMD, "Failed to alloc memory for %d VNICs",
+		RTE_LOG(ERR, PMD, "Failed to alloc memory for %d VNICs\n",
 			max_vnics);
 		return -ENOMEM;
 	}

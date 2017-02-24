@@ -141,7 +141,7 @@ int bnxt_setup_int(struct bnxt *bp)
 	return 0;
 
 setup_exit:
-	RTE_LOG(ERR, PMD, "bnxt_irq_tbl setup failed");
+	RTE_LOG(ERR, PMD, "bnxt_irq_tbl setup failed\n");
 	return rc;
 }
 
