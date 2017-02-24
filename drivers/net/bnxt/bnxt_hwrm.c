@@ -477,6 +477,11 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 		rte_mem_lock_page(bp->hwrm_cmd_resp_addr);
 		bp->hwrm_cmd_resp_dma_addr =
 			rte_mem_virt2phy(bp->hwrm_cmd_resp_addr);
+		if (bp->hwrm_cmd_resp_dma_addr == 0) {
+			RTE_LOG(ERR, PMD, "Unable to map response buffer to physical memory.\n");
+			rc = -ENOMEM;
+			goto error;
+		}
 		bp->max_resp_len = max_resp_len;
 	}
 
@@ -1056,6 +1061,10 @@ int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)
 	req.req_buf_page_size = rte_cpu_to_le_16(page_getenum(bp->pf.active_vfs * HWRM_MAX_REQ_LEN));
 	req.req_buf_len = rte_cpu_to_le_16(HWRM_MAX_REQ_LEN);
 	req.req_buf_page_addr[0] = rte_cpu_to_le_64(rte_mem_virt2phy(bp->pf.vf_req_buf));
+	if (req.req_buf_page_addr[0] == 0) {
+		RTE_LOG(ERR, PMD, "unable to map buffer address to physical memory\n");
+		return -ENOMEM;
+	}
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -1399,6 +1408,10 @@ int bnxt_alloc_hwrm_resources(struct bnxt *bp)
 	}
 	bp->hwrm_cmd_resp_dma_addr =
 		rte_mem_virt2phy(bp->hwrm_cmd_resp_addr);
+	if (bp->hwrm_cmd_resp_dma_addr == 0) {
+		RTE_LOG(ERR, PMD, "unable to map response address to physical memory\n");
+		return -ENOMEM;
+	}
 	rte_spinlock_init(&bp->hwrm_lock);
 
 	return 0;
@@ -2209,8 +2222,12 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 
 	req.vf_id = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
 	req.max_vnic_id_cnt = rte_cpu_to_le_32(bp->pf.total_vnics);
-	req.vnic_id_tbl_addr = rte_mem_virt2phy(vnic_ids);
+	req.vnic_id_tbl_addr = rte_cpu_to_le_64(rte_mem_virt2phy(vnic_ids));
 
+	if (req.vnic_id_tbl_addr == 0) {
+		RTE_LOG(ERR, PMD, "unable to map VNIC ID table address to physical memory\n");
+		return -ENOMEM;
+	}
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
 
