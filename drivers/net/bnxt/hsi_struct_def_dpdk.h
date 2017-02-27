@@ -82,45 +82,128 @@ struct ctx_hw_stats64 {
 #define HWRM_RESP_VALID_KEY	1	/* valid key for HWRM response */
 
 /*
- * Request types
+ * This version of the specification defines the commands listed in the
+ * table below. The following are general implementation requirements
+ * for these commands: # All commands listed below that are marked
+ * neither reserved nor experimental shall be implemented by the HWRM. #
+ * A HWRM client compliant to this specification should not use commands
+ * outside of the list below. # A HWRM client compliant to this
+ * specification should not use command numbers marked reserved below. #
+ * A command marked experimental below may not be implemented by the
+ * HWRM. # A command marked experimental may change in the future
+ * version of the HWRM specification. # A command not listed below may
+ * be implemented by the HWRM. The behavior of commands that are not
+ * listed below is outside the scope of this specification.
  */
-#define HWRM_VER_GET			(UINT32_C(0x0))
-#define HWRM_FUNC_BUF_UNRGTR		(UINT32_C(0xe))
-#define HWRM_FUNC_RESET			(UINT32_C(0x11))
-#define HWRM_FUNC_QCAPS			(UINT32_C(0x15))
-#define HWRM_FUNC_QCFG			(UINT32_C(0x16))
-#define HWRM_FUNC_CFG			(UINT32_C(0x17))
-#define HWRM_FUNC_QSTATS		(UINT32_C(0x18))
-#define HWRM_FUNC_CLR_STATS		(UINT32_C(0x19))
-#define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
-#define HWRM_FUNC_VF_VNIC_IDS_QUERY	(UINT32_C(0x1c))
-#define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
-#define HWRM_FUNC_BUF_RGTR		(UINT32_C(0x1f))
-#define HWRM_PORT_PHY_CFG		(UINT32_C(0x20))
-#define HWRM_PORT_PHY_QCFG		(UINT32_C(0x27))
-#define HWRM_QUEUE_QPORTCFG		(UINT32_C(0x30))
-#define HWRM_VNIC_ALLOC			(UINT32_C(0x40))
-#define HWRM_VNIC_FREE			(UINT32_C(0x41))
-#define HWRM_VNIC_CFG			(UINT32_C(0x42))
-#define HWRM_VNIC_QCFG			(UINT32_C(0x43))
-#define HWRM_VNIC_RSS_CFG		(UINT32_C(0x46))
-#define HWRM_RING_ALLOC			(UINT32_C(0x50))
-#define HWRM_RING_FREE			(UINT32_C(0x51))
-#define HWRM_RING_GRP_ALLOC		(UINT32_C(0x60))
-#define HWRM_RING_GRP_FREE		(UINT32_C(0x61))
-#define HWRM_VNIC_RSS_COS_LB_CTX_ALLOC	(UINT32_C(0x70))
-#define HWRM_VNIC_RSS_COS_LB_CTX_FREE	(UINT32_C(0x71))
-#define HWRM_CFA_L2_FILTER_ALLOC	(UINT32_C(0x90))
-#define HWRM_CFA_L2_FILTER_FREE		(UINT32_C(0x91))
-#define HWRM_CFA_L2_FILTER_CFG		(UINT32_C(0x92))
-#define HWRM_CFA_L2_SET_RX_MASK		(UINT32_C(0x93))
-#define HWRM_TUNNEL_DST_PORT_ALLOC	(UINT32_C(0xa1))
-#define HWRM_TUNNEL_DST_PORT_FREE	(UINT32_C(0xa2))
-#define HWRM_STAT_CTX_ALLOC		(UINT32_C(0xb0))
-#define HWRM_STAT_CTX_FREE		(UINT32_C(0xb1))
-#define HWRM_STAT_CTX_CLR_STATS		(UINT32_C(0xb3))
-#define HWRM_EXEC_FWD_RESP		(UINT32_C(0xd0))
-#define HWRM_REJECT_FWD_RESP		(UINT32_C(0xd1))
+#define HWRM_VER_GET                                      (UINT32_C(0x0))
+#define HWRM_FUNC_BUF_UNRGTR                              (UINT32_C(0xe))
+#define HWRM_FUNC_VF_CFG                                  (UINT32_C(0xf))
+    /* Reserved for future use */
+#define RESERVED1                                         (UINT32_C(0x10))
+#define HWRM_FUNC_RESET                                   (UINT32_C(0x11))
+#define HWRM_FUNC_GETFID                                  (UINT32_C(0x12))
+#define HWRM_FUNC_VF_ALLOC                                (UINT32_C(0x13))
+#define HWRM_FUNC_VF_FREE                                 (UINT32_C(0x14))
+#define HWRM_FUNC_QCAPS                                   (UINT32_C(0x15))
+#define HWRM_FUNC_QCFG                                    (UINT32_C(0x16))
+#define HWRM_FUNC_CFG                                     (UINT32_C(0x17))
+#define HWRM_FUNC_QSTATS                                  (UINT32_C(0x18))
+#define HWRM_FUNC_CLR_STATS                               (UINT32_C(0x19))
+#define HWRM_FUNC_DRV_UNRGTR                              (UINT32_C(0x1a))
+#define HWRM_FUNC_VF_RESC_FREE                            (UINT32_C(0x1b))
+#define HWRM_FUNC_VF_VNIC_IDS_QUERY                       (UINT32_C(0x1c))
+#define HWRM_FUNC_DRV_RGTR                                (UINT32_C(0x1d))
+#define HWRM_FUNC_DRV_QVER                                (UINT32_C(0x1e))
+#define HWRM_FUNC_BUF_RGTR                                (UINT32_C(0x1f))
+#define HWRM_PORT_PHY_CFG                                 (UINT32_C(0x20))
+#define HWRM_PORT_MAC_CFG                                 (UINT32_C(0x21))
+#define HWRM_PORT_QSTATS                                  (UINT32_C(0x23))
+#define HWRM_PORT_LPBK_QSTATS                             (UINT32_C(0x24))
+#define HWRM_PORT_PHY_QCFG                                (UINT32_C(0x27))
+#define HWRM_PORT_MAC_QCFG                                (UINT32_C(0x28))
+#define HWRM_PORT_PHY_QCAPS                               (UINT32_C(0x2a))
+#define HWRM_PORT_LED_CFG                                 (UINT32_C(0x2d))
+#define HWRM_PORT_LED_QCFG                                (UINT32_C(0x2e))
+#define HWRM_PORT_LED_QCAPS                               (UINT32_C(0x2f))
+#define HWRM_QUEUE_QPORTCFG                               (UINT32_C(0x30))
+#define HWRM_QUEUE_QCFG                                   (UINT32_C(0x31))
+#define HWRM_QUEUE_CFG                                    (UINT32_C(0x32))
+    /* Reserved for future use */
+#define RESERVED2                                         (UINT32_C(0x33))
+    /* Reserved for future use */
+#define RESERVED3                                         (UINT32_C(0x34))
+#define HWRM_QUEUE_PFCENABLE_QCFG                         (UINT32_C(0x35))
+#define HWRM_QUEUE_PFCENABLE_CFG                          (UINT32_C(0x36))
+#define HWRM_QUEUE_PRI2COS_QCFG                           (UINT32_C(0x37))
+#define HWRM_QUEUE_PRI2COS_CFG                            (UINT32_C(0x38))
+#define HWRM_QUEUE_COS2BW_QCFG                            (UINT32_C(0x39))
+#define HWRM_QUEUE_COS2BW_CFG                             (UINT32_C(0x3a))
+#define HWRM_VNIC_ALLOC                                   (UINT32_C(0x40))
+#define HWRM_VNIC_FREE                                    (UINT32_C(0x41))
+#define HWRM_VNIC_CFG                                     (UINT32_C(0x42))
+#define HWRM_VNIC_QCFG                                    (UINT32_C(0x43))
+#define HWRM_VNIC_TPA_CFG                                 (UINT32_C(0x44))
+#define HWRM_VNIC_RSS_CFG                                 (UINT32_C(0x46))
+#define HWRM_VNIC_RSS_QCFG                                (UINT32_C(0x47))
+#define HWRM_VNIC_PLCMODES_CFG                            (UINT32_C(0x48))
+#define HWRM_VNIC_PLCMODES_QCFG                           (UINT32_C(0x49))
+#define HWRM_VNIC_QCAPS                                   (UINT32_C(0x4a))
+#define HWRM_RING_ALLOC                                   (UINT32_C(0x50))
+#define HWRM_RING_FREE                                    (UINT32_C(0x51))
+#define HWRM_RING_CMPL_RING_QAGGINT_PARAMS                (UINT32_C(0x52))
+#define HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS             (UINT32_C(0x53))
+#define HWRM_RING_RESET                                   (UINT32_C(0x5e))
+#define HWRM_RING_GRP_ALLOC                               (UINT32_C(0x60))
+#define HWRM_RING_GRP_FREE                                (UINT32_C(0x61))
+#define HWRM_VNIC_RSS_COS_LB_CTX_ALLOC                    (UINT32_C(0x70))
+#define HWRM_VNIC_RSS_COS_LB_CTX_FREE                     (UINT32_C(0x71))
+#define HWRM_CFA_L2_FILTER_ALLOC                          (UINT32_C(0x90))
+#define HWRM_CFA_L2_FILTER_FREE                           (UINT32_C(0x91))
+#define HWRM_CFA_L2_FILTER_CFG                            (UINT32_C(0x92))
+#define HWRM_CFA_L2_SET_RX_MASK                           (UINT32_C(0x93))
+    /* Reserved for future use */
+#define RESERVED4                                         (UINT32_C(0x94))
+#define HWRM_CFA_TUNNEL_FILTER_ALLOC                      (UINT32_C(0x95))
+#define HWRM_CFA_TUNNEL_FILTER_FREE                       (UINT32_C(0x96))
+#define HWRM_CFA_NTUPLE_FILTER_ALLOC                      (UINT32_C(0x99))
+#define HWRM_CFA_NTUPLE_FILTER_FREE                       (UINT32_C(0x9a))
+#define HWRM_CFA_NTUPLE_FILTER_CFG                        (UINT32_C(0x9b))
+#define HWRM_TUNNEL_DST_PORT_QUERY                        (UINT32_C(0xa0))
+#define HWRM_TUNNEL_DST_PORT_ALLOC                        (UINT32_C(0xa1))
+#define HWRM_TUNNEL_DST_PORT_FREE                         (UINT32_C(0xa2))
+#define HWRM_STAT_CTX_ALLOC                               (UINT32_C(0xb0))
+#define HWRM_STAT_CTX_FREE                                (UINT32_C(0xb1))
+#define HWRM_STAT_CTX_QUERY                               (UINT32_C(0xb2))
+#define HWRM_STAT_CTX_CLR_STATS                           (UINT32_C(0xb3))
+#define HWRM_FW_RESET                                     (UINT32_C(0xc0))
+#define HWRM_FW_QSTATUS                                   (UINT32_C(0xc1))
+#define HWRM_EXEC_FWD_RESP                                (UINT32_C(0xd0))
+#define HWRM_REJECT_FWD_RESP                              (UINT32_C(0xd1))
+#define HWRM_FWD_RESP                                     (UINT32_C(0xd2))
+#define HWRM_FWD_ASYNC_EVENT_CMPL                         (UINT32_C(0xd3))
+#define HWRM_TEMP_MONITOR_QUERY                           (UINT32_C(0xe0))
+#define HWRM_WOL_FILTER_ALLOC                             (UINT32_C(0xf0))
+#define HWRM_WOL_FILTER_FREE                              (UINT32_C(0xf1))
+#define HWRM_WOL_FILTER_QCFG                              (UINT32_C(0xf2))
+#define HWRM_WOL_REASON_QCFG                              (UINT32_C(0xf3))
+#define HWRM_DBG_DUMP                                     (UINT32_C(0xff14))
+#define HWRM_NVM_VALIDATE_OPTION                          (UINT32_C(0xffef))
+#define HWRM_NVM_FLUSH                                    (UINT32_C(0xfff0))
+#define HWRM_NVM_GET_VARIABLE                             (UINT32_C(0xfff1))
+#define HWRM_NVM_SET_VARIABLE                             (UINT32_C(0xfff2))
+#define HWRM_NVM_INSTALL_UPDATE                           (UINT32_C(0xfff3))
+#define HWRM_NVM_MODIFY                                   (UINT32_C(0xfff4))
+#define HWRM_NVM_VERIFY_UPDATE                            (UINT32_C(0xfff5))
+#define HWRM_NVM_GET_DEV_INFO                             (UINT32_C(0xfff6))
+#define HWRM_NVM_ERASE_DIR_ENTRY                          (UINT32_C(0xfff7))
+#define HWRM_NVM_MOD_DIR_ENTRY                            (UINT32_C(0xfff8))
+#define HWRM_NVM_FIND_DIR_ENTRY                           (UINT32_C(0xfff9))
+#define HWRM_NVM_GET_DIR_ENTRIES                          (UINT32_C(0xfffa))
+#define HWRM_NVM_GET_DIR_INFO                             (UINT32_C(0xfffb))
+#define HWRM_NVM_RAW_DUMP                                 (UINT32_C(0xfffc))
+#define HWRM_NVM_READ                                     (UINT32_C(0xfffd))
+#define HWRM_NVM_WRITE                                    (UINT32_C(0xfffe))
+#define HWRM_NVM_RAW_WRITE_BLK                            (UINT32_C(0xffff))
 
 /* Return Codes */
 #define HWRM_ERR_CODE_INVALID_PARAMS		(UINT32_C(0x2))
@@ -1330,38 +1413,38 @@ struct output {
 
 /* Output (16 bytes) */
 struct hwrm_err_output {
-    uint16_t error_code;
-    /*
-     * Pass/Fail or error type Note: receiver to verify the in parameters,
-     * and fail the call with an error when appropriate
-     */
-    uint16_t req_type;
-    /* This field returns the type of original request. */
-    uint16_t seq_id;
-    /* This field provides original sequence number of the command. */
-    uint16_t resp_len;
-    /*
-     * This field is the length of the response in bytes. The last byte of
-     * the response is a valid flag that will read as '1' when the command
-     * has been completely written to memory.
-     */
-    uint32_t opaque_0;
-    /* debug info for this error response. */
-    uint16_t opaque_1;
-    /* debug info for this error response. */
-    uint8_t cmd_err;
-    /*
-     * In the case of an error response, command specific error code is
-     * returned in this field.
-     */
-    uint8_t valid;
-    /*
-     * This field is used in Output records to indicate that the output is
-     * completely written to RAM. This field should be read as '1' to
-     * indicate that the output has been completely written. When writing a
-     * command completion or response to an internal processor, the order of
-     * writes has to be such that this field is written last.
-     */
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint32_t opaque_0;
+	/* debug info for this error response. */
+	uint16_t opaque_1;
+	/* debug info for this error response. */
+	uint8_t cmd_err;
+	/*
+	 * In the case of an error response, command specific error code is
+	 * returned in this field.
+	 */
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
 } hwrm_err_output_t, *phwrm_err_output_t;
 
 /* hwrm_ver_get */
