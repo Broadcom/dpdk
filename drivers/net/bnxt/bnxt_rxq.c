@@ -76,6 +76,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto err_out;
 		}
+		vnic->flags |= BNXT_VNIC_INFO_BCAST;
 		STAILQ_INSERT_TAIL(&bp->ff_pool[0], vnic, next);
 		bp->nr_vnics++;
 
@@ -121,9 +122,11 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		}
 		/* For each pool, allocate MACVLAN CFA rule & VNIC */
 		if (!pools) {
+			pools = RTE_MIN(bp->max_vnics,
+			    RTE_MIN(bp->max_l2_ctx,
+			     RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS)));
 			RTE_LOG(ERR, PMD,
-				"VMDq pool not set, defaulted to 64\n");
-			pools = ETH_64_POOLS;
+			    "VMDq pool not set, defaulted to %d\n", pools);
 		}
 		nb_q_per_grp = bp->rx_cp_nr_rings / pools;
 		start_grp_id = 1;
@@ -134,10 +137,11 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			vnic = bnxt_alloc_vnic(bp);
 			if (!vnic) {
 				RTE_LOG(ERR, PMD,
-					"VNIC alloc failed\n");
+					"VNIC %d alloc failed\n", i);
 				rc = -ENOMEM;
 				goto err_out;
 			}
+			vnic->flags |= BNXT_VNIC_INFO_BCAST;
 			STAILQ_INSERT_TAIL(&bp->ff_pool[i], vnic, next);
 			bp->nr_vnics++;
 
@@ -178,6 +182,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		rc = -ENOMEM;
 		goto err_out;
 	}
+	vnic->flags |= BNXT_VNIC_INFO_BCAST;
 	/* Partition the rx queues for the single pool */
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		rxq = bp->eth_dev->data->rx_queues[i];
@@ -273,7 +278,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	int rc = 0;
 
 	if (!nb_desc || nb_desc > MAX_RX_DESC_CNT) {
-		RTE_LOG(ERR, PMD, "nb_desc %d is invalid", nb_desc);
+		RTE_LOG(ERR, PMD, "nb_desc %d is invalid\n", nb_desc);
 		rc = -EINVAL;
 		goto out;
 	}
@@ -286,7 +291,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq = rte_zmalloc_socket("bnxt_rx_queue", sizeof(struct bnxt_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
-		RTE_LOG(ERR, PMD, "bnxt_rx_queue allocation failed!");
+		RTE_LOG(ERR, PMD, "bnxt_rx_queue allocation failed!\n");
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -308,7 +313,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	/* Allocate RX ring hardware descriptors */
 	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq->rx_ring, rxq->cp_ring,
 			"rxr")) {
-		RTE_LOG(ERR, PMD, "ring_dma_zone_reserve for rx_ring failed!");
+		RTE_LOG(ERR, PMD, "ring_dma_zone_reserve for rx_ring failed!\n");
 		bnxt_rx_queue_release_op(rxq);
 		rc = -ENOMEM;
 		goto out;

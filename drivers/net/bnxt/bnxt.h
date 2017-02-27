@@ -54,17 +54,14 @@ enum bnxt_hw_context {
 	HW_CONTEXT_IS_LB    = 3,
 };
 
-struct bnxt_vf_info {
-	uint16_t		fw_fid;
-	uint8_t			mac_addr[ETHER_ADDR_LEN];
-	uint16_t		max_rsscos_ctx;
-	uint16_t		max_cp_rings;
-	uint16_t		max_tx_rings;
-	uint16_t		max_rx_rings;
-	uint16_t		max_l2_ctx;
-	uint16_t		max_vnics;
-	uint16_t		vlan;
-	struct bnxt_pf_info	*pf;
+struct bnxt_child_vf_info {
+	uint16_t		fid;
+	uint16_t		max_tx_rate;
+	uint32_t		func_cfg_flags;
+	uint32_t		l2_rx_mask;
+	uint16_t		dflt_vlan;
+	void			*req_buf;
+	uint8_t			mac_spoof_en;
 };
 
 struct bnxt_pf_info {
@@ -73,22 +70,21 @@ struct bnxt_pf_info {
 #define BNXT_FIRST_VF_FID	128
 #define BNXT_PF_RINGS_USED(bp)	bnxt_get_num_queues(bp)
 #define BNXT_PF_RINGS_AVAIL(bp)	(bp->pf.max_cp_rings - BNXT_PF_RINGS_USED(bp))
-	uint32_t		fw_fid;
+
 	uint8_t			port_id;
-	uint8_t			mac_addr[ETHER_ADDR_LEN];
-	uint16_t		max_rsscos_ctx;
-	uint16_t		max_cp_rings;
-	uint16_t		max_tx_rings;
-	uint16_t		max_rx_rings;
-	uint16_t		max_l2_ctx;
-	uint16_t		max_vnics;
 	uint16_t		first_vf_id;
 	uint16_t		active_vfs;
 	uint16_t		max_vfs;
+	uint32_t		func_cfg_flags;
 	void			*vf_req_buf;
-	phys_addr_t		vf_req_buf_dma_addr;
 	uint32_t		vf_req_fwd[8];
-	struct bnxt_vf_info	*vf;
+	uint16_t		total_vnics;
+#define BNXT_EVB_MODE_NONE	0
+#define BNXT_EVB_MODE_VEB	1
+#define BNXT_EVB_MODE_VEPA	2
+	uint8_t 		evb_mode;
+	uint16_t 		vnic_dflt_ring_group[340];
+	struct bnxt_child_vf_info	*vf_info;
 };
 
 /* Max wait time is 10 * 100ms = 1s */
@@ -174,12 +170,29 @@ struct bnxt {
 	struct bnxt_link_info	link_info;
 	struct bnxt_cos_queue_info	cos_queue[BNXT_COS_QUEUE_COUNT];
 
+	uint16_t		fw_fid;
+	uint8_t			dflt_mac_addr[ETHER_ADDR_LEN];
+	uint16_t		max_rsscos_ctx;
+	uint16_t		max_cp_rings;
+	uint16_t		max_tx_rings;
+	uint16_t		max_rx_rings;
+	uint16_t		max_l2_ctx;
+	uint16_t		max_vnics;
+	uint16_t		max_stat_ctx;
+	uint16_t		vlan;
 	struct bnxt_pf_info		pf;
-	struct bnxt_vf_info		vf;
 	uint8_t			port_partition_type;
 	uint8_t			dev_stopped;
+	uint8_t			vxlan_port_cnt;
+	uint8_t			geneve_port_cnt;
+	uint16_t		vxlan_port;
+	uint16_t		geneve_port;
+	uint16_t		vxlan_fw_dst_port_id;
+	uint16_t		geneve_fw_dst_port_id;
 };
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
+
+int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 
 #endif
