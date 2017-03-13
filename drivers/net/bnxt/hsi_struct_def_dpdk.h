@@ -2611,7 +2611,8 @@ struct hwrm_func_cfg_input {
 	 * not supported to allow the allocation of TX rings to span multiple
 	 * scheduler nodes.
 	 */
-	#define HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE         (UINT32_C(0x200))
+	#define HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE  (UINT32_C(0x200))
+	#define HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE (UINT32_C(0x400))
 	uint32_t enables;
 	/* This bit must be '1' for the mtu field to be configured. */
 	#define HWRM_FUNC_CFG_INPUT_ENABLES_MTU                    (UINT32_C(0x1))

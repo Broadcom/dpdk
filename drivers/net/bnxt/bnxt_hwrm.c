@@ -1964,7 +1964,8 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	bp->pf.func_cfg_flags &= ~HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE;
+	bp->pf.func_cfg_flags &= ~(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE|HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE);
+	bp->pf.func_cfg_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE;
 	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings);
 	return rc;
 }
@@ -1999,7 +2000,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 *
 	 * This has been fixed with firmware versions above 20.6.54
 	 */
-	bp->pf.func_cfg_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE;
+	bp->pf.func_cfg_flags &= ~(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE|HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE);
+	bp->pf.func_cfg_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE;
 	rc = bnxt_hwrm_pf_func_cfg(bp, 1);
 	if (rc)
 		return rc;
