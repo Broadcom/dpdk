@@ -1964,7 +1964,8 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	bp->pf.func_cfg_flags &= ~HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE;
+	bp->pf.func_cfg_flags &=
+			~HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE;
 	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings);
 	return rc;
 }
@@ -1999,7 +2000,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 *
 	 * This has been fixed with firmware versions above 20.6.54
 	 */
-	bp->pf.func_cfg_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE;
+	bp->pf.func_cfg_flags |=
+			HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE;
 	rc = bnxt_hwrm_pf_func_cfg(bp, 1);
 	if (rc)
 		return rc;
@@ -2250,6 +2252,24 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	}
 
 	rte_free(vnic_ids);
+
+	return rc;
+}
+
+int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	req.enables |= rte_cpu_to_le_32(
+			HWRM_FUNC_CFG_INPUT_ENABLES_VLAN_ANTISPOOF_MODE);
+	req.vlan_antispoof_mode =
+		HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_VALIDATE_VLAN;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
 
 	return rc;
 }

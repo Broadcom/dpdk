@@ -62,6 +62,7 @@ struct bnxt_child_vf_info {
 	uint16_t		dflt_vlan;
 	void			*req_buf;
 	uint8_t			mac_spoof_en;
+	uint8_t			vlan_spoof_en;
 };
 
 struct bnxt_pf_info {

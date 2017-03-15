@@ -205,4 +205,21 @@ int rte_pmd_bnxt_get_vf_stats(uint8_t port,
 int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
 				uint16_t vf_id);
 
+/**
+ * Enable/Disable VF VLAN anti spoof
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param on
+ *    1 - Enable VF VLAN anti spoof.
+ *    0 - Disable VF VLAN anti spoof.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
 #endif /* _PMD_BNXT_H_ */
