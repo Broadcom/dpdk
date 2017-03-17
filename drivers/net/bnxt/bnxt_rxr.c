@@ -95,15 +95,15 @@ static void bnxt_reuse_rx_mbuf(struct bnxt_rx_ring_info *rxr, uint16_t cons,
 }
 
 static uint16_t bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
-			    struct bnxt_rx_queue *rxq, uint32_t *raw_cons)
+			    struct bnxt_rx_queue *rxq, uint16_t *cp_cons_ptr, bool *cp_v_ptr)
 {
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 	struct rx_pkt_cmpl *rxcmp;
 	struct rx_pkt_cmpl_hi *rxcmp1;
-	uint32_t tmp_raw_cons = *raw_cons;
-	uint16_t cons, prod, cp_cons =
-	    RING_CMP(cpr->cp_ring_struct, tmp_raw_cons);
+	uint16_t cons, prod;
+	uint16_t cp_cons = *cp_cons_ptr;
+	bool v = *cp_v_ptr;
 	struct bnxt_sw_rx_bd *rx_buf;
 	struct rte_mbuf *mbuf;
 	int rc = 0;
@@ -111,11 +111,11 @@ static uint16_t bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	rxcmp = (struct rx_pkt_cmpl *)
 	    &cpr->cp_desc_ring[cp_cons];
 
-	tmp_raw_cons = NEXT_RAW_CMP(tmp_raw_cons);
-	cp_cons = RING_CMP(cpr->cp_ring_struct, tmp_raw_cons);
+	NEXT_CMP(cpr, cp_cons, v);
+
 	rxcmp1 = (struct rx_pkt_cmpl_hi *)&cpr->cp_desc_ring[cp_cons];
 
-	if (!CMP_VALID(rxcmp1, tmp_raw_cons, cpr->cp_ring_struct))
+	if (!CMP_VALID(cp_cons, v, cpr))
 		return -EBUSY;
 
 	prod = rxr->rx_prod;
@@ -189,7 +189,8 @@ static uint16_t bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 next_rx:
 	rxr->rx_prod = RING_NEXT(rxr->rx_ring_struct, prod);
 
-	*raw_cons = tmp_raw_cons;
+	*cp_cons_ptr = cp_cons;
+	*cp_v_ptr = v;
 
 	return rc;
 }
@@ -200,8 +201,10 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct bnxt_rx_queue *rxq = rx_queue;
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint32_t raw_cons = cpr->cp_raw_cons;
-	uint32_t cons;
+	uint16_t cons = cpr->cp_cons;
+	bool v = cpr->v;
+	uint32_t last_cons = UINT32_MAX;
+	bool last_v = v;
 	int nb_rx_pkts = 0;
 	bool rx_event = false;
 	struct rx_pkt_cmpl *rxcmp;
@@ -210,36 +213,37 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	while (1) {
 		int rc;
 
-		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
+		NEXT_CMP(cpr, cons, v);
+
 		rte_prefetch0(&cpr->cp_desc_ring[cons]);
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
 
-		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
+		if (!CMP_VALID(cons, v, cpr))
 			break;
 
 		/* TODO: Avoid magic numbers... */
 		if ((CMP_TYPE(rxcmp) & 0x30) == 0x10) {
-			rc = bnxt_rx_pkt(&rx_pkts[nb_rx_pkts], rxq, &raw_cons);
+			rc = bnxt_rx_pkt(&rx_pkts[nb_rx_pkts], rxq, &cons, &v);
 			if (likely(!rc))
 				nb_rx_pkts++;
 			else if (rc == -EBUSY)	/* partial completion */
 				break;
 			rx_event = true;
 		}
-		raw_cons = NEXT_RAW_CMP(raw_cons);
+
+		last_cons = cons;
+		last_v = v;
+
 		if (nb_rx_pkts == nb_pkts)
 			break;
 	}
-	if (raw_cons == cpr->cp_raw_cons) {
-		/*
-		 * For PMD, there is no need to keep on pushing to REARM
-		 * the doorbell if there are no new completions
-		 */
+	if (last_cons == UINT32_MAX)
 		return nb_rx_pkts;
-	}
-	cpr->cp_raw_cons = raw_cons;
 
-	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+	cpr->cp_cons = last_cons;
+	cpr->v = last_v;
+
+	B_CP_DB_IDX_DISARM(cpr, cpr->cp_cons);
 	if (rx_event)
 		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
 	return nb_rx_pkts;
@@ -305,6 +309,7 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (cpr == NULL)
 		return -ENOMEM;
+	cpr->cp_cons = UINT16_MAX;
 	rxq->cp_ring = cpr;
 
 	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",

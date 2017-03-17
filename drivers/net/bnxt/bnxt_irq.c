@@ -51,17 +51,19 @@ static void bnxt_int_handler(struct rte_intr_handle *handle __rte_unused,
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
-	uint32_t raw_cons = cpr->cp_raw_cons;
-	uint32_t cons;
+	uint16_t cons = cpr->cp_cons;
+	bool v = cpr->v;
+	uint32_t last_cons = UINT32_MAX;
+	bool last_v = cpr->v;
 	struct cmpl_base *cmp;
 
-	while (1) {
-		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
-		cmp = &cpr->cp_desc_ring[cons];
+	while(1) {
+		NEXT_CMP(cpr, cons, v);
 
-		if (!CMP_VALID(cmp, raw_cons, cpr->cp_ring_struct))
+		if (!CMP_VALID(cons, v, cpr))
 			break;
 
+		cmp = &cpr->cp_desc_ring[cons];
 		switch (CMP_TYPE(cmp)) {
 		case CMPL_BASE_TYPE_HWRM_ASYNC_EVENT:
 			/* Handle any async event */
@@ -71,15 +73,25 @@ static void bnxt_int_handler(struct rte_intr_handle *handle __rte_unused,
 			bnxt_handle_fwd_req(bp, cmp);
 			break;
 		default:
-			RTE_LOG(INFO, PMD, "Ignoring %02x completion\n", CMP_TYPE(cmp));
 			/* Ignore any other events */
+			if (cmp->type & rte_cpu_to_le_16(0x01)) {
+				NEXT_CMP(cpr, cons, v);
+				if (!CMP_VALID(cons, v, cpr))
+					goto no_more;
+			}
+			RTE_LOG(INFO, PMD, "Ignoring %02x completion\n", CMP_TYPE(cmp));
 			break;
 		}
-		raw_cons = NEXT_RAW_CMP(raw_cons);
-	}
 
-	cpr->cp_raw_cons = raw_cons;
-	B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+		last_cons = cons;
+		last_v = v;
+	};
+no_more:
+	if (last_cons != UINT32_MAX) {
+		cpr->cp_cons = last_cons;
+		cpr->v = last_v;
+	}
+	B_CP_DB_IDX_ARM(cpr, cpr->cp_cons);
 }
 
 void bnxt_free_int(struct bnxt *bp)
@@ -105,16 +117,15 @@ void bnxt_disable_int(struct bnxt *bp)
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
 
 	/* Only the default completion ring */
-	if (cpr != NULL && cpr->cp_doorbell != NULL) {
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
-	}
+	if (cpr != NULL && cpr->cp_doorbell != NULL)
+		B_CP_DB_DISARM(cpr);
 }
 
 void bnxt_enable_int(struct bnxt *bp)
 {
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
 
-	B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+	B_CP_DB_ARM(cpr);
 }
 
 int bnxt_setup_int(struct bnxt *bp)
