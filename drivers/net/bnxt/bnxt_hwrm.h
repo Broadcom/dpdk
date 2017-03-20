@@ -127,5 +127,6 @@ void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp);
 int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata,
 	int (*hwrm_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic));
+int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf);
 
 #endif

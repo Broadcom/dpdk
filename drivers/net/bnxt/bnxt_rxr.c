@@ -145,6 +145,8 @@ static uint16_t bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 			RX_PKT_CMPL_METADATA_DE |
 			RX_PKT_CMPL_METADATA_PRI_MASK);
 		mbuf->ol_flags |= PKT_RX_VLAN_PKT;
+
+		RTE_LOG(ERR, PMD, "VLAN %d stripped.\n", mbuf->vlan_tci);
 	}
 
 	rx_buf->mbuf = NULL;

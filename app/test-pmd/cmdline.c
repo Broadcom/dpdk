@@ -10847,9 +10847,14 @@ cmd_set_vf_vlan_anti_spoof_parsed(
 	struct cmd_vf_vlan_anti_spoof_result *res = parsed_result;
 	int ret = 0;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	struct rte_eth_dev *dev = &rte_eth_devices[res->port_id];
 
-	ret = rte_pmd_ixgbe_set_vf_vlan_anti_spoof(res->port_id, res->vf_id,
-			is_on);
+	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0)
+		ret = rte_pmd_bnxt_set_vf_vlan_anti_spoof(res->port_id,
+							  res->vf_id, is_on);
+	else
+		ret = rte_pmd_ixgbe_set_vf_vlan_anti_spoof(res->port_id,
+							   res->vf_id, is_on);
 	switch (ret) {
 	case 0:
 		break;
@@ -11022,8 +11027,14 @@ cmd_set_vf_vlan_stripq_parsed(
 	struct cmd_vf_vlan_stripq_result *res = parsed_result;
 	int ret = 0;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	struct rte_eth_dev *dev = &rte_eth_devices[res->port_id];
 
-	ret = rte_pmd_ixgbe_set_vf_vlan_stripq(res->port_id, res->vf_id, is_on);
+	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0)
+		ret = rte_pmd_bnxt_set_vf_vlan_stripq(res->port_id,
+						      res->vf_id, is_on);
+	else
+		ret = rte_pmd_ixgbe_set_vf_vlan_stripq(res->port_id,
+						       res->vf_id, is_on);
 	switch (ret) {
 	case 0:
 		break;
@@ -11105,8 +11116,14 @@ cmd_set_vf_vlan_insert_parsed(
 {
 	struct cmd_vf_vlan_insert_result *res = parsed_result;
 	int ret;
+	struct rte_eth_dev *dev = &rte_eth_devices[res->port_id];
 
-	ret = rte_pmd_ixgbe_set_vf_vlan_insert(res->port_id, res->vf_id, res->vlan_id);
+	if (strcmp(dev->driver->pci_drv.driver.name, "net_bnxt") == 0)
+		ret = rte_pmd_bnxt_set_vf_vlan_insert(res->port_id,
+						      res->vf_id, res->vlan_id);
+	else
+		ret = rte_pmd_ixgbe_set_vf_vlan_insert(res->port_id,
+						      res->vf_id, res->vlan_id);
 	switch (ret) {
 	case 0:
 		break;

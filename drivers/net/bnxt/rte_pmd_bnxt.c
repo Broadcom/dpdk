@@ -214,9 +214,11 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	func_flags = bp->pf.vf_info[vf].func_cfg_flags;
 
 	if (on)
-		func_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK;
+		func_flags |=
+			HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK_ENABLE;
 	else
-		func_flags &= ~HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK;
+		func_flags |=
+			HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK_DISABLE;
 
 	bp->pf.vf_info[vf].func_cfg_flags = func_flags;
 
@@ -224,6 +226,52 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	if (!rc) {
 		bp->pf.vf_info[vf].mac_spoof_en = on;
 	}
+
+	return rc;
+}
+
+int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_dev *dev;
+	struct bnxt *bp;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (on > 1)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"Attempt to set mac spoof on non-PF port %d!\n", port);
+		return -EINVAL;
+	}
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	/* Prev setting same as new setting. */
+	if (on == bp->pf.vf_info[vf].vlan_spoof_en)
+		return 0;
+
+	if (!bp->pf.vf_info[vf].dflt_vlan) {
+		RTE_LOG(ERR, PMD, "Default VLAN not set.\n");
+		return -ENOTSUP;
+	}
+
+	rc = bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(bp, vf);
+	if (!rc)
+		bp->pf.vf_info[vf].vlan_spoof_en = on;
+	else
+		RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", vf);
 
 	return rc;
 }
