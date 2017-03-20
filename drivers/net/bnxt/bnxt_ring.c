@@ -31,6 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <unistd.h>
 #include <rte_memzone.h>
 
 #include "bnxt.h"
@@ -84,6 +85,9 @@ void bnxt_init_ring_grps(struct bnxt *bp)
  * tx bd ring - Only non-zero length if tx_ring_info is not NULL
  * rx bd ring - Only non-zero length if rx_ring_info is not NULL
  */
+//#define ROUNDUP(x) RTE_CACHE_LINE_ROUNDUP(x)
+#define ROUNDUP(size) \
+	(4096 * ((size + 4096 - 1) / 4096))
 int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			    struct bnxt_tx_ring_info *tx_ring_info,
 			    struct bnxt_rx_ring_info *rx_ring_info,
@@ -97,35 +101,36 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	const struct rte_memzone *mz = NULL;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	phys_addr_t mz_phys_addr;
+	int sz;
 
 	int stats_len = (tx_ring_info || rx_ring_info) ?
-	    RTE_CACHE_LINE_ROUNDUP(sizeof(struct ctx_hw_stats64)) : 0;
+	    ROUNDUP(sizeof(struct ctx_hw_stats64)) : 0;
 
 	int cp_vmem_start = stats_len;
-	int cp_vmem_len = RTE_CACHE_LINE_ROUNDUP(cp_ring->vmem_size);
+	int cp_vmem_len = ROUNDUP(cp_ring->vmem_size);
 
 	int tx_vmem_start = cp_vmem_start + cp_vmem_len;
 	int tx_vmem_len =
-	    tx_ring_info ? RTE_CACHE_LINE_ROUNDUP(tx_ring_info->
+	    tx_ring_info ? ROUNDUP(tx_ring_info->
 						tx_ring_struct->vmem_size) : 0;
 
 	int rx_vmem_start = tx_vmem_start + tx_vmem_len;
 	int rx_vmem_len = rx_ring_info ?
-		RTE_CACHE_LINE_ROUNDUP(rx_ring_info->
+		ROUNDUP(rx_ring_info->
 						rx_ring_struct->vmem_size) : 0;
 
 	int cp_ring_start = rx_vmem_start + rx_vmem_len;
-	int cp_ring_len = RTE_CACHE_LINE_ROUNDUP(cp_ring->ring_size *
+	int cp_ring_len = ROUNDUP(cp_ring->ring_size *
 						 sizeof(struct cmpl_base));
 
 	int tx_ring_start = cp_ring_start + cp_ring_len;
 	int tx_ring_len = tx_ring_info ?
-	    RTE_CACHE_LINE_ROUNDUP(tx_ring_info->tx_ring_struct->ring_size *
+	    ROUNDUP(tx_ring_info->tx_ring_struct->ring_size *
 				   sizeof(struct tx_bd_long)) : 0;
 
 	int rx_ring_start = tx_ring_start + tx_ring_len;
 	int rx_ring_len =  rx_ring_info ?
-		RTE_CACHE_LINE_ROUNDUP(rx_ring_info->rx_ring_struct->ring_size *
+		ROUNDUP(rx_ring_info->rx_ring_struct->ring_size *
 		sizeof(struct rx_prod_pkt_bd)) : 0;
 
 	int total_alloc_len = rx_ring_start + rx_ring_len;
@@ -137,10 +142,10 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
 	mz = rte_memzone_lookup(mz_name);
 	if (!mz) {
-		mz = rte_memzone_reserve(mz_name, total_alloc_len,
+		mz = rte_memzone_reserve_aligned(mz_name, total_alloc_len,
 					 SOCKET_ID_ANY,
 					 RTE_MEMZONE_2MB |
-					 RTE_MEMZONE_SIZE_HINT_ONLY);
+					 RTE_MEMZONE_SIZE_HINT_ONLY, getpagesize());
 		if (mz == NULL)
 			return -ENOMEM;
 	}
@@ -148,6 +153,8 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	mz_phys_addr = mz->phys_addr;
 	if ((phys_addr_t)mz->addr == mz_phys_addr) {
 		RTE_LOG(WARNING, PMD, "Memzone physical address same as virtual.  Using rte_mem_virt2phy()\n");
+		for (sz = 0; sz < total_alloc_len; sz+=getpagesize())
+			rte_mem_lock_page(((char *)mz->addr) + sz);
 		mz_phys_addr = rte_mem_virt2phy(mz->addr);
 		if (mz_phys_addr == 0) {
 			RTE_LOG(ERR, PMD, "unable to map ring address to physical memory\n");
@@ -240,7 +247,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		    (char *)bp->eth_dev->pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
 		bp->grp_info[idx].cp_fw_ring_id = cp_ring->fw_ring_id;
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+		B_CP_DB_DISARM(cpr);
 
 		/* Rx ring */
 		rc = bnxt_hwrm_ring_alloc(bp, ring,
@@ -281,7 +288,7 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		    (char *)bp->eth_dev->pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
 		bp->grp_info[idx].cp_fw_ring_id = cp_ring->fw_ring_id;
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+		B_CP_DB_DISARM(cpr);
 
 		/* Tx ring */
 		rc = bnxt_hwrm_ring_alloc(bp, ring,

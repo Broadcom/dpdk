@@ -113,6 +113,7 @@ int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id)
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (cpr == NULL)
 		return -ENOMEM;
+	cpr->cp_cons = UINT16_MAX;
 	txq->cp_ring = cpr;
 
 	ring = rte_zmalloc_socket("bnxt_tx_ring_struct",
@@ -281,8 +282,10 @@ static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
 static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 {
 	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
-	uint32_t raw_cons = cpr->cp_raw_cons;
-	uint32_t cons;
+	uint16_t cons = cpr->cp_cons;
+	bool v = cpr->v;
+	uint32_t last_cons = UINT32_MAX;
+	bool last_v = cpr->v;
 	int nb_tx_pkts = 0;
 	struct tx_cmpl *txcmp;
 
@@ -290,25 +293,39 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 			(bnxt_tx_avail(txq->tx_ring))) >
 			txq->tx_free_thresh) {
 		while (1) {
-			cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
+			NEXT_CMP(cpr, cons, v);
 			txcmp = (struct tx_cmpl *)&cpr->cp_desc_ring[cons];
 
-			if (!CMP_VALID(txcmp, raw_cons, cpr->cp_ring_struct))
+			if (!CMP_VALID(cons, v, cpr))
 				break;
 
 			if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
 				nb_tx_pkts++;
-			else
+			else {
 				RTE_LOG(DEBUG, PMD,
 						"Unhandled CMP type %02x\n",
 						CMP_TYPE(txcmp));
-			raw_cons = NEXT_RAW_CMP(raw_cons);
+
+				if (txcmp->flags_type & rte_cpu_to_le_16(1)) {
+					NEXT_CMP(cpr, v, cons);
+
+					if (!CMP_VALID(cons, v, cpr))
+						break;
+				}
+			}
+
+			last_cons = cons;
+			last_v = v;
 		}
-		if (nb_tx_pkts)
-			bnxt_tx_cmp(txq, nb_tx_pkts);
-		cpr->cp_raw_cons = raw_cons;
-		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+		if (last_cons != UINT32_MAX) {
+			cpr->cp_cons = last_cons;
+			cpr->v = last_v;
+			if (nb_tx_pkts)
+				bnxt_tx_cmp(txq, nb_tx_pkts);
+			B_CP_DB_IDX_DISARM(cpr, cpr->cp_cons);
+		}
 	}
+
 	return nb_tx_pkts;
 }
 

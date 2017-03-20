@@ -88,9 +88,6 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 
 	/* Locate VF's forwarded command */
 	fwd_cmd = (struct input *)bp->pf.vf_info[fw_vf_id - bp->pf.first_vf_id].req_buf;
-  
-	/* Force the target ID to the source VF */
-	fwd_cmd->target_id = rte_cpu_to_le_16(fw_vf_id);
 
 	if (fw_vf_id < bp->pf.first_vf_id || fw_vf_id >= (bp->pf.first_vf_id) + bp->pf.active_vfs) {
 		RTE_LOG(ERR, PMD,
@@ -135,8 +132,9 @@ int bnxt_alloc_def_cp_ring(struct bnxt *bp)
 	if (rc)
 		goto err_out;
 	cpr->cp_doorbell = bp->pdev->mem_resource[2].addr;
-	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
+	B_CP_DB_DISARM(cpr);
 	bp->grp_info[0].cp_fw_ring_id = cp_ring->fw_ring_id;
+	rc = bnxt_hwrm_func_cfg_def_cp(bp);
 
 err_out:
 	return rc;
@@ -165,6 +163,7 @@ int bnxt_init_def_ring_struct(struct bnxt *bp, unsigned int socket_id)
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (cpr == NULL)
 		return -ENOMEM;
+	cpr->cp_cons = UINT16_MAX;
 	bp->def_cp_ring = cpr;
 
 	ring = rte_zmalloc_socket("bnxt_cp_ring_struct",

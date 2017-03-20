@@ -65,6 +65,7 @@ int bnxt_hwrm_func_reset(struct bnxt *bp);
 int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags);
 int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *stats);
 int bnxt_hwrm_func_clr_stats(struct bnxt *bp, uint16_t fid);
+int bnxt_hwrm_func_cfg_def_cp(struct bnxt *bp);
 
 int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
 
