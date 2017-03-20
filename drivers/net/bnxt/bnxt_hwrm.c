@@ -2145,7 +2145,7 @@ int bnxt_hwrm_func_cfg_def_cp(struct bnxt *bp)
 	HWRM_PREP(req, FUNC_CFG, -1, resp);
 	req.fid = rte_cpu_to_le_16(0xffff);
 	req.flags = rte_cpu_to_le_32(bp->pf.func_cfg_flags);
-	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);;
+	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);
 	req.async_event_cr = rte_cpu_to_le_16(bp->def_cp_ring->cp_ring_struct->fw_ring_id);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
