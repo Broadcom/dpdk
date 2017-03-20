@@ -1332,17 +1332,13 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		goto error_free;
 	}
 
-	/* Forward all requests */
-	memset(bp->pf.vf_req_fwd, 0xff, sizeof(bp->pf.vf_req_fwd));
-	/*
-	 * We can't forward commands before the VF driver calls drv_rgtr.
-	 * These are the ones that are may be used by drivers.
-	 */
-	ALLOW_FUNC(HWRM_VER_GET);
-	ALLOW_FUNC(HWRM_QUEUE_QPORTCFG);
-	ALLOW_FUNC(HWRM_FUNC_QCFG);
-	ALLOW_FUNC(HWRM_FUNC_QCAPS);
-	ALLOW_FUNC(HWRM_FUNC_DRV_RGTR);
+	/* Forward all requests if firmware is new enough */
+	if (1)
+		memset(bp->pf.vf_req_fwd, 0xff, sizeof(bp->pf.vf_req_fwd));
+	else {
+		RTE_LOG(WARNING, PMD, "Firmware too old for VF mailbox functionality\n");
+		memset(bp->pf.vf_req_fwd, 0, sizeof(bp->pf.vf_req_fwd));
+	}
 
 	/*
 	 * The following are used for driver cleanup.  If we disallow these,

@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <unistd.h>
+
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -386,6 +388,7 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	}
 
 	req.async_event_fwd[0] |= rte_cpu_to_le_32(0x1);   /* TODO: Use MACRO */
+	memset(req.async_event_fwd, 0xff, sizeof(req.async_event_fwd));
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -786,10 +789,10 @@ int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	struct hwrm_stat_ctx_clr_stats_input req = {.req_type = 0 };
 	struct hwrm_stat_ctx_clr_stats_output *resp = bp->hwrm_cmd_resp_addr;
 
-	HWRM_PREP(req, STAT_CTX_CLR_STATS, -1, resp);
-
 	if (cpr->hw_stats_ctx_id == (uint32_t)HWRM_NA_SIGNATURE)
 		return rc;
+
+	HWRM_PREP(req, STAT_CTX_CLR_STATS, -1, resp);
 
 	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
 	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
@@ -1296,7 +1299,7 @@ static void bnxt_free_cp_ring(struct bnxt *bp,
 	bp->grp_info[idx].cp_fw_ring_id = INVALID_HW_RING_ID;
 	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
 			sizeof(*cpr->cp_desc_ring));
-	cpr->cp_raw_cons = 0;
+	cpr->cp_cons = UINT16_MAX;
 }
 
 int bnxt_free_all_hwrm_rings(struct bnxt *bp)
@@ -1964,7 +1967,8 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	bp->pf.func_cfg_flags &= ~HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE;
+	bp->pf.func_cfg_flags &= ~(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE|HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE);
+	bp->pf.func_cfg_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE;
 	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings);
 	return rc;
 }
@@ -1974,7 +1978,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	struct hwrm_func_cfg_input req = {0};
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	int i;
-	unsigned int ui;
+	size_t sz;
 	int rc = 0;
 	size_t req_buf_sz;
 
@@ -1984,6 +1988,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	}
 
 	rc = bnxt_hwrm_func_qcaps(bp);
+
 	if (rc)
 		return rc;
 
@@ -1999,7 +2004,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 	 *
 	 * This has been fixed with firmware versions above 20.6.54
 	 */
-	bp->pf.func_cfg_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE;
+	bp->pf.func_cfg_flags &= ~(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE|HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE);
+	bp->pf.func_cfg_flags |= HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE;
 	rc = bnxt_hwrm_pf_func_cfg(bp, 1);
 	if (rc)
 		return rc;
@@ -2014,8 +2020,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 		rc = -ENOMEM;
 		goto error_free;
 	}
-	for (ui = 0; ui < req_buf_sz; ui += rte_eal_get_physmem_size()) {
-		rte_mem_lock_page(((char *)bp->pf.vf_req_buf) + ui);
+	for (sz = 0; sz < req_buf_sz; sz += getpagesize()) {
+		rte_mem_lock_page(((char *)bp->pf.vf_req_buf) + sz);
 	}
 	for (i = 0; i < num_vfs; i++)
 		bp->pf.vf_info[i].req_buf = ((char *)bp->pf.vf_req_buf) + (i * HWRM_MAX_REQ_LEN);
@@ -2130,6 +2136,23 @@ int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 	return rc;
 }
 
+int bnxt_hwrm_func_cfg_def_cp(struct bnxt *bp)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(0xffff);
+	req.flags = rte_cpu_to_le_32(bp->pf.func_cfg_flags);
+	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);;
+	req.async_event_cr = rte_cpu_to_le_16(bp->def_cp_ring->cp_ring_struct->fw_ring_id);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
 			uint16_t max_bw, uint16_t enables)
 {
@@ -2204,6 +2227,7 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	uint32_t i, num_vnic_ids;
 	uint16_t *vnic_ids;
 	size_t vnic_id_sz;
+	size_t sz;
 
 	/* First query all VNIC ids */
 
@@ -2214,8 +2238,8 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 		rc = -ENOMEM;
 		return rc;
 	}
-	for (i = 0; i< vnic_id_sz; i+=rte_eal_get_physmem_size()) {
-		rte_mem_lock_page(((char *)vnic_ids) + i);
+	for (sz = 0; sz < vnic_id_sz; sz += getpagesize()) {
+		rte_mem_lock_page(((char *)vnic_ids) + sz);
 	}
 
 	HWRM_PREP(req, FUNC_VF_VNIC_IDS_QUERY, -1, resp_vf_vnic_ids);
