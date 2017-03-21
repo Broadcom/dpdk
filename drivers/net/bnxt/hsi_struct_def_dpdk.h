@@ -2596,17 +2596,7 @@ struct hwrm_func_cfg_input {
 	 * This bit must be '1' for the num_cmpl_rings field to be
 	 * configured.
 	 */
-	#define HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE  (UINT32_C(0x200))
-	#define HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE (UINT32_C(0x400))
-	uint32_t enables;
-	/* This bit must be '1' for the mtu field to be configured. */
-	#define HWRM_FUNC_CFG_INPUT_ENABLES_MTU                    (UINT32_C(0x1))
-	/* This bit must be '1' for the mru field to be configured. */
-	#define HWRM_FUNC_CFG_INPUT_ENABLES_MRU                    (UINT32_C(0x2))
-	/* This bit must be '1' for the num_rsscos_ctxs field to be configured. */
-	#define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS        (UINT32_C(0x4))
-	/* This bit must be '1' for the num_cmpl_rings field to be configured. */
-	#define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_CMPL_RINGS         (UINT32_C(0x8))
+	#define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_CMPL_RINGS	(UINT32_C(0x8))
 	/* This bit must be '1' for the num_tx_rings field to be configured. */
 	#define HWRM_FUNC_CFG_INPUT_ENABLES_NUM_TX_RINGS	UINT32_C(0x10)
 	/* This bit must be '1' for the num_rx_rings field to be configured. */
