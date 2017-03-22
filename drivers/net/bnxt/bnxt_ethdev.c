@@ -1333,7 +1333,9 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Forward all requests if firmware is new enough */
-	if (1)
+	if (((bp->fw_ver >= ((20 << 24) | (6 << 16) | (100 << 8))) &&
+	    (bp->fw_ver < ((20 << 24) | (7 << 16)))) ||
+	    ((bp->fw_ver >= ((20 << 24) | (8 << 16)))))
 		memset(bp->pf.vf_req_fwd, 0xff, sizeof(bp->pf.vf_req_fwd));
 	else {
 		RTE_LOG(WARNING, PMD, "Firmware too old for VF mailbox functionality\n");

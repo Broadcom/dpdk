@@ -427,6 +427,7 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 		resp->hwrm_intf_maj, resp->hwrm_intf_min,
 		resp->hwrm_intf_upd,
 		resp->hwrm_fw_maj, resp->hwrm_fw_min, resp->hwrm_fw_bld);
+	bp->fw_ver = (resp->hwrm_fw_maj << 24) | (resp->hwrm_fw_min << 16) | (resp->hwrm_fw_bld << 8) | resp->hwrm_fw_rsvd;
 	RTE_LOG(INFO, PMD, "Driver HWRM version: %d.%d.%d\n",
 		HWRM_VERSION_MAJOR, HWRM_VERSION_MINOR, HWRM_VERSION_UPDATE);
 
