@@ -190,6 +190,7 @@ struct bnxt {
 	uint16_t		geneve_port;
 	uint16_t		vxlan_fw_dst_port_id;
 	uint16_t		geneve_fw_dst_port_id;
+	uint32_t		fw_ver;
 };
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
