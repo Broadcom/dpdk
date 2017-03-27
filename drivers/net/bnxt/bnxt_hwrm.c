@@ -824,7 +824,7 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp,
 
 	HWRM_PREP(req, STAT_CTX_ALLOC, -1, resp);
 
-	req.update_period_ms = rte_cpu_to_le_32(1000);
+	req.update_period_ms = rte_cpu_to_le_32(0);
 
 	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
 	req.stats_dma_addr =
@@ -1144,6 +1144,41 @@ int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id, void *encaped, 
 	return rc;
 }
 
+int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx, struct rte_eth_stats *stats)
+{
+	int rc = 0;
+	struct hwrm_stat_ctx_query_input req = {.req_type = 0};
+	struct hwrm_stat_ctx_query_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, STAT_CTX_QUERY, -1, resp);
+
+	req.stat_ctx_id = rte_cpu_to_le_32(cid);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	stats->q_ipackets[idx] = rte_le_to_cpu_64(resp->rx_ucast_pkts);
+	stats->q_ipackets[idx] += rte_le_to_cpu_64(resp->rx_mcast_pkts);
+	stats->q_ipackets[idx] += rte_le_to_cpu_64(resp->rx_bcast_pkts);
+	stats->q_ibytes[idx] = rte_le_to_cpu_64(resp->rx_ucast_bytes);
+	stats->q_ibytes[idx] += rte_le_to_cpu_64(resp->rx_mcast_bytes);
+	stats->q_ibytes[idx] += rte_le_to_cpu_64(resp->rx_bcast_bytes);
+
+	stats->q_opackets[idx] = rte_le_to_cpu_64(resp->tx_ucast_pkts);
+	stats->q_opackets[idx] += rte_le_to_cpu_64(resp->tx_mcast_pkts);
+	stats->q_opackets[idx] += rte_le_to_cpu_64(resp->tx_bcast_pkts);
+	stats->q_obytes[idx] = rte_le_to_cpu_64(resp->tx_ucast_bytes);
+	stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_mcast_bytes);
+	stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_bcast_bytes);
+
+	stats->q_errors[idx] = rte_le_to_cpu_64(resp->rx_err_pkts);
+	stats->q_errors[idx] += rte_le_to_cpu_64(resp->tx_err_pkts);
+	stats->q_errors[idx] += rte_le_to_cpu_64(resp->rx_drop_pkts);
+
+	return rc;
+}
+
 int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *stats)
 {
 	int rc = 0;
@@ -1157,8 +1192,6 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *s
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
-
-	memset(stats, 0, sizeof(*stats));
 
 	stats->ipackets = rte_le_to_cpu_64(resp->rx_ucast_pkts);
 	stats->ipackets += rte_le_to_cpu_64(resp->rx_mcast_pkts);
@@ -1177,6 +1210,8 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *s
 	stats->ierrors = rte_le_to_cpu_64(resp->rx_err_pkts);
 	stats->oerrors = rte_le_to_cpu_64(resp->tx_err_pkts);
 	stats->rx_nombuf = rte_le_to_cpu_64(resp->rx_drop_pkts);
+
+	stats->imissed = 0;	// TODO: Does this map to anything?
 
 	return rc;
 }
