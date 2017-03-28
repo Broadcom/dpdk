@@ -212,12 +212,14 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	if (vnic->flags & BNXT_VNIC_INFO_BCAST)
 			mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
 
-	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
-		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
 	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
+#if 0
+	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
 	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
+#endif
 	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
 
@@ -226,6 +228,9 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
+
+	bnxt_clear_hwrm_vnic_filters(bp, vnic);
+	bnxt_set_hwrm_vnic_filters(bp, vnic);
 
 	return rc;
 }
@@ -237,6 +242,9 @@ int bnxt_hwrm_clear_filter(struct bnxt *bp,
 	struct hwrm_cfa_l2_filter_free_input req = {.req_type = 0 };
 	struct hwrm_cfa_l2_filter_free_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (filter->fw_l2_filter_id == UINT64_MAX)
+		return 0;
+
 	HWRM_PREP(req, CFA_L2_FILTER_FREE, -1, resp);
 
 	req.l2_filter_id = rte_cpu_to_le_64(filter->fw_l2_filter_id);
@@ -245,7 +253,7 @@ int bnxt_hwrm_clear_filter(struct bnxt *bp,
 
 	HWRM_CHECK_RESULT;
 
-	filter->fw_l2_filter_id = -1;
+	filter->fw_l2_filter_id = UINT64_MAX;
 
 	return 0;
 }
@@ -1440,6 +1448,10 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	int rc = 0;
 
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
+		if (filter->mac_index == PROMISC_MAC_INDEX && !(vnic->flags & BNXT_VNIC_INFO_PROMISC))
+			continue;
+		if (filter->mac_index == ALLMULTI_MAC_INDEX && !(vnic->flags & BNXT_VNIC_INFO_ALLMULTI))
+			continue;
 		rc = bnxt_hwrm_set_filter(bp, vnic, filter);
 		if (rc)
 			break;
