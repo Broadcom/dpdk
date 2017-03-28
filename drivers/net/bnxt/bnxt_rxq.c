@@ -88,6 +88,29 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		vnic->start_grp_id = 1;
 		vnic->end_grp_id = vnic->start_grp_id +
 				   bp->rx_cp_nr_rings - 1;
+		/* Now the promiscuous filter */
+		filter = bnxt_alloc_filter(bp);
+		if (!filter) {
+			RTE_LOG(ERR, PMD, "L2 Promiscuous filter alloc failed\n");
+			rc = -ENOMEM;
+			goto err_out;
+		}
+		memset(filter->l2_addr, 0, sizeof(filter->l2_addr));
+		memcpy(filter->l2_addr_mask, "\x01\x00\x00\x00\x00", sizeof(filter->l2_addr_mask));
+		filter->mac_index = PROMISC_MAC_INDEX;
+		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+		/* And the all multicast filter */
+		filter = bnxt_alloc_filter(bp);
+		if (!filter) {
+			RTE_LOG(ERR, PMD, "L2 Promiscuous filter alloc failed\n");
+			rc = -ENOMEM;
+			goto err_out;
+		}
+		memset(filter->l2_addr, 0xff, sizeof(filter->l2_addr));
+		memcpy(filter->l2_addr_mask, "\x01\x00\x00\x00\x00", sizeof(filter->l2_addr_mask));
+		filter->mac_index = PROMISC_MAC_INDEX;
+		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+		/* And finally the MAC filter */
 		filter = bnxt_alloc_filter(bp);
 		if (!filter) {
 			RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
@@ -155,6 +178,29 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			vnic->start_grp_id = start_grp_id;
 			vnic->end_grp_id = end_grp_id;
 
+			/* Now the promiscuous filter */
+			filter = bnxt_alloc_filter(bp);
+			if (!filter) {
+				RTE_LOG(ERR, PMD, "L2 Promiscuous filter alloc failed\n");
+				rc = -ENOMEM;
+				goto err_out;
+			}
+			memset(filter->l2_addr, 0, sizeof(filter->l2_addr));
+			memcpy(filter->l2_addr_mask, "\x01\x00\x00\x00\x00", sizeof(filter->l2_addr_mask));
+			filter->mac_index = PROMISC_MAC_INDEX;
+			STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+			/* And the all multicast filter */
+			filter = bnxt_alloc_filter(bp);
+			if (!filter) {
+				RTE_LOG(ERR, PMD, "L2 Promiscuous filter alloc failed\n");
+				rc = -ENOMEM;
+				goto err_out;
+			}
+			memset(filter->l2_addr, 0xff, sizeof(filter->l2_addr));
+			memcpy(filter->l2_addr_mask, "\x01\x00\x00\x00\x00", sizeof(filter->l2_addr_mask));
+			filter->mac_index = PROMISC_MAC_INDEX;
+			STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+			/* Finally the MAC filter */
 			filter = bnxt_alloc_filter(bp);
 			if (!filter) {
 				RTE_LOG(ERR, PMD,
@@ -196,6 +242,29 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	vnic->start_grp_id = 1;
 	vnic->end_grp_id = vnic->start_grp_id +
 			   bp->rx_cp_nr_rings - 1;
+	/* Now the promiscuous filter */
+	filter = bnxt_alloc_filter(bp);
+	if (!filter) {
+		RTE_LOG(ERR, PMD, "L2 Promiscuous filter alloc failed\n");
+		rc = -ENOMEM;
+		goto err_out;
+	}
+	memset(filter->l2_addr, 0, sizeof(filter->l2_addr));
+	memcpy(filter->l2_addr_mask, "\x01\x00\x00\x00\x00", sizeof(filter->l2_addr_mask));
+	filter->mac_index = PROMISC_MAC_INDEX;
+	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+	/* And the all multicast filter */
+	filter = bnxt_alloc_filter(bp);
+	if (!filter) {
+		RTE_LOG(ERR, PMD, "L2 Promiscuous filter alloc failed\n");
+		rc = -ENOMEM;
+		goto err_out;
+	}
+	memset(filter->l2_addr, 0xff, sizeof(filter->l2_addr));
+	memcpy(filter->l2_addr_mask, "\x01\x00\x00\x00\x00", sizeof(filter->l2_addr_mask));
+	filter->mac_index = PROMISC_MAC_INDEX;
+	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+	/* Finally the MAC filter */
 	filter = bnxt_alloc_filter(bp);
 	if (!filter) {
 		RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
