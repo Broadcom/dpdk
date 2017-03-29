@@ -42,7 +42,6 @@ struct bnxt_filter_info {
 	uint64_t		fw_l2_filter_id;
 #define INVALID_MAC_INDEX	UINT16_C(0xffff)
 #define PROMISC_MAC_INDEX	UINT16_C(0xfffe)
-#define ALLMULTI_MAC_INDEX	UINT16_C(0xfffd)
 	uint16_t		mac_index;
 
 	/* Filter Characteristics */

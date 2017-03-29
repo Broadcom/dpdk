@@ -217,9 +217,9 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 #if 0
 	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
+#endif
 	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
-#endif
 	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
 
@@ -1449,8 +1449,6 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
 		if (filter->mac_index == PROMISC_MAC_INDEX && !(vnic->flags & BNXT_VNIC_INFO_PROMISC))
-			continue;
-		if (filter->mac_index == ALLMULTI_MAC_INDEX && !(vnic->flags & BNXT_VNIC_INFO_ALLMULTI))
 			continue;
 		rc = bnxt_hwrm_set_filter(bp, vnic, filter);
 		if (rc)
