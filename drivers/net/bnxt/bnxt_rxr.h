@@ -43,6 +43,7 @@ struct bnxt_sw_rx_bd {
 
 struct bnxt_rx_ring_info {
 	uint16_t		rx_prod;
+	uint16_t		rx_db_prod;
 	void			*rx_doorbell;
 
 	struct rx_prod_pkt_bd	*rx_desc_ring;

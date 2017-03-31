@@ -162,9 +162,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	bool last_v = v;
 	int nb_rx_pkts = 0;
 	struct rx_pkt_cmpl *rxcmp;
-	uint16_t prod;
 
-	prod = rxr->rx_prod;
 	/* Handle RX burst request */
 	while (1) {
 		int rc;
@@ -199,12 +197,13 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	cpr->v = last_v;
 
 	B_CP_DB_IDX_DISARM(cpr, cpr->cp_cons);
-	while (prod != rxr->rx_prod) {
+	while (rxr->rx_db_prod != rxr->rx_prod) {
 		// TODO: Needs to handle failure...
-		bnxt_alloc_rx_data(rxq, rxr, prod);
-		prod = RING_NEXT(rxr->rx_ring_struct, prod);
+		if (bnxt_alloc_rx_data(rxq, rxr, rxr->rx_db_prod))
+			break;
+		rxr->rx_db_prod = RING_NEXT(rxr->rx_ring_struct, rxr->rx_db_prod);
 	}
-	B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+	B_RX_DB(rxr->rx_doorbell, rxr->rx_db_prod);
 	return nb_rx_pkts;
 }
 
@@ -323,7 +322,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 				rxq->queue_id, i, ring->ring_size);
 			break;
 		}
-		rxr->rx_prod = prod;
+		rxr->rx_prod = rxr->rx_db_prod = prod;
 		prod = RING_NEXT(rxr->rx_ring_struct, prod);
 	}
 
