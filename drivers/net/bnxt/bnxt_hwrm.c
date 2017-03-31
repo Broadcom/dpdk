@@ -214,10 +214,10 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
-#if 0
-	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
-		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
-#endif
+	if (BNXT_VF(bp) || bp->pf.max_vfs) {
+		if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
+			mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
+	}
 	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
 	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
@@ -229,8 +229,10 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	HWRM_CHECK_RESULT;
 
-	bnxt_clear_hwrm_vnic_filters(bp, vnic);
-	bnxt_set_hwrm_vnic_filters(bp, vnic);
+	if (BNXT_PF(bp) && bp->pf.max_vfs == 0) {
+		bnxt_clear_hwrm_vnic_filters(bp, vnic);
+		bnxt_set_hwrm_vnic_filters(bp, vnic);
+	}
 
 	return rc;
 }
@@ -1448,8 +1450,12 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	int rc = 0;
 
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
-		if (filter->mac_index == PROMISC_MAC_INDEX && !(vnic->flags & BNXT_VNIC_INFO_PROMISC))
-			continue;
+		if (filter->mac_index == PROMISC_MAC_INDEX) {
+			if (!(vnic->flags & BNXT_VNIC_INFO_PROMISC))
+				continue;
+			if (BNXT_VF(bp) || bp->pf.max_vfs)
+				continue;
+		}
 		rc = bnxt_hwrm_set_filter(bp, vnic, filter);
 		if (rc)
 			break;
