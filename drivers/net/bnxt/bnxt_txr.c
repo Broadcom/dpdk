@@ -171,15 +171,16 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	last_prod = (txr->tx_prod + tx_buf->nr_bds - 1) &
 				txr->tx_ring_struct->ring_mask;
 
-	// TODO: We need to verify this and not set the NO_CMPL flag if we'll run out
 	if (unlikely(bnxt_tx_avail(txr) < tx_buf->nr_bds))
 		return -ENOMEM;
 
 	txbd = &txr->tx_desc_ring[txr->tx_prod];
 	txbd->opaque = nb_tx_pkts;
 	txbd->flags_type = tx_buf->nr_bds << TX_BD_LONG_FLAGS_BD_CNT_SFT;
-	if (nb_pkts != nb_tx_pkts)
+	if (nb_pkts != nb_tx_pkts && !txq->cmpl_next)
 		txbd->flags_type |= TX_BD_LONG_FLAGS_NO_CMPL;
+	else
+		txq->cmpl_next = false;
 	txbd->len = tx_pkt->data_len;
 	if (txbd->len >= 2014)
 		txbd->flags_type |= TX_BD_LONG_FLAGS_LHINT_GTE2K;
@@ -346,11 +347,13 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	/* Handle TX burst request */
 	for (nb_tx_pkts = 0; nb_tx_pkts < nb_pkts; nb_tx_pkts++) {
 		if (bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq, nb_tx_pkts + 1, nb_pkts)) {
+			txq->cmpl_next = true;
 			break;
 		} else if ((nb_tx_pkts & db_mask) != last_db_mask) {
 			B_TX_DB(txq->tx_ring->tx_doorbell,
 					txq->tx_ring->tx_prod);
 			last_db_mask = nb_tx_pkts & db_mask;
+			txq->cmpl_next = true;
 		}
 	}
 	if (nb_tx_pkts)
