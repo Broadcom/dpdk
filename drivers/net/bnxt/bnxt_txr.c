@@ -346,6 +346,13 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Handle TX burst request */
 	for (nb_tx_pkts = 0; nb_tx_pkts < nb_pkts; nb_tx_pkts++) {
+		/*
+		 * Ensure a completion is requested at four fixed points in the ring.
+		 * This guards against the TX ring being full with no completions
+		 * pending.
+		 */
+		if ((txq->tx_ring->tx_prod & db_mask) == 0)
+			txq->cmpl_next = true;
 		if (bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq, nb_tx_pkts + 1, nb_pkts)) {
 			txq->cmpl_next = true;
 			break;
@@ -353,7 +360,6 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			B_TX_DB(txq->tx_ring->tx_doorbell,
 					txq->tx_ring->tx_prod);
 			last_db_mask = nb_tx_pkts & db_mask;
-			txq->cmpl_next = true;
 		}
 	}
 	if (nb_tx_pkts)
