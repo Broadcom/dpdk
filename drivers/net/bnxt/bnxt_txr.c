@@ -143,7 +143,7 @@ static inline uint32_t bnxt_tx_avail(struct bnxt_tx_ring_info *txr)
 }
 
 static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
-				struct bnxt_tx_queue *txq)
+				struct bnxt_tx_queue *txq, uint16_t nb_tx_pkts, uint16_t nb_pkts)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct tx_bd_long *txbd;
@@ -175,8 +175,12 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		return -ENOMEM;
 
 	txbd = &txr->tx_desc_ring[txr->tx_prod];
-	txbd->opaque = txr->tx_prod;
+	txbd->opaque = nb_tx_pkts;
 	txbd->flags_type = tx_buf->nr_bds << TX_BD_LONG_FLAGS_BD_CNT_SFT;
+	if (nb_pkts != nb_tx_pkts && !txq->cmpl_next)
+		txbd->flags_type |= TX_BD_LONG_FLAGS_NO_CMPL;
+	else
+		txq->cmpl_next = false;
 	txbd->len = tx_pkt->data_len;
 	if (txbd->len >= 2014)
 		txbd->flags_type |= TX_BD_LONG_FLAGS_LHINT_GTE2K;
@@ -300,7 +304,7 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 				break;
 
 			if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
-				nb_tx_pkts++;
+				nb_tx_pkts += txcmp->opaque;
 			else {
 				RTE_LOG(DEBUG, PMD,
 						"Unhandled CMP type %02x\n",
@@ -342,7 +346,15 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Handle TX burst request */
 	for (nb_tx_pkts = 0; nb_tx_pkts < nb_pkts; nb_tx_pkts++) {
-		if (bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq)) {
+		/*
+		 * Ensure a completion is requested at four fixed points in the ring.
+		 * This guards against the TX ring being full with no completions
+		 * pending.
+		 */
+		if ((txq->tx_ring->tx_prod & db_mask) == 0)
+			txq->cmpl_next = true;
+		if (bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq, nb_tx_pkts + 1, nb_pkts)) {
+			txq->cmpl_next = true;
 			break;
 		} else if ((nb_tx_pkts & db_mask) != last_db_mask) {
 			B_TX_DB(txq->tx_ring->tx_doorbell,

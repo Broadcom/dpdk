@@ -7298,6 +7298,113 @@ struct hwrm_stat_ctx_clr_stats_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_stat_ctx_query */
+/* Description: This command returns statistics of a context. */
+/* Input (24 bytes) */
+
+struct hwrm_stat_ctx_query_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint32_t stat_ctx_id;
+    /* ID of the statistics context that is being queried. */
+    uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (176 bytes) */
+
+struct hwrm_stat_ctx_query_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint64_t tx_ucast_pkts;
+    /* Number of transmitted unicast packets */
+    uint64_t tx_mcast_pkts;
+    /* Number of transmitted multicast packets */
+    uint64_t tx_bcast_pkts;
+    /* Number of transmitted broadcast packets */
+    uint64_t tx_err_pkts;
+    /* Number of transmitted packets with error */
+    uint64_t tx_drop_pkts;
+    /* Number of dropped packets on transmit path */
+    uint64_t tx_ucast_bytes;
+    /* Number of transmitted bytes for unicast traffic */
+    uint64_t tx_mcast_bytes;
+    /* Number of transmitted bytes for multicast traffic */
+    uint64_t tx_bcast_bytes;
+    /* Number of transmitted bytes for broadcast traffic */
+    uint64_t rx_ucast_pkts;
+    /* Number of received unicast packets */
+    uint64_t rx_mcast_pkts;
+    /* Number of received multicast packets */
+    uint64_t rx_bcast_pkts;
+    /* Number of received broadcast packets */
+    uint64_t rx_err_pkts;
+    /* Number of received packets with error */
+    uint64_t rx_drop_pkts;
+    /* Number of dropped packets on received path */
+    uint64_t rx_ucast_bytes;
+    /* Number of received bytes for unicast traffic */
+    uint64_t rx_mcast_bytes;
+    /* Number of received bytes for multicast traffic */
+    uint64_t rx_bcast_bytes;
+    /* Number of received bytes for broadcast traffic */
+    uint64_t rx_agg_pkts;
+    /* Number of aggregated unicast packets */
+    uint64_t rx_agg_bytes;
+    /* Number of aggregated unicast bytes */
+    uint64_t rx_agg_events;
+    /* Number of aggregation events */
+    uint64_t rx_agg_aborts;
+    /* Number of aborted aggregations */
+    uint32_t unused_0;
+    uint8_t unused_1;
+    uint8_t unused_2;
+    uint8_t unused_3;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+} __attribute__((packed));
+
 /* hwrm_exec_fwd_resp */
 /*
  * Description: This command is used to send an encapsulated request to the

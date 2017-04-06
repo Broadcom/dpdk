@@ -77,7 +77,7 @@ void bnxt_init_filters(struct bnxt *bp)
 	STAILQ_INIT(&bp->free_filter_list);
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
-		filter->fw_l2_filter_id = -1;
+		filter->fw_l2_filter_id = UINT64_MAX;
 		STAILQ_INSERT_TAIL(&bp->free_filter_list, filter, next);
 	}
 }
@@ -117,7 +117,7 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 	max_filters = bp->max_l2_ctx;
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
-		if (filter->fw_l2_filter_id != ((uint64_t)-1)) {
+		if (filter->fw_l2_filter_id != UINT64_MAX) {
 			RTE_LOG(ERR, PMD, "HWRM filter is not freed??\n");
 			/* Call HWRM to try to free filter again */
 			rc = bnxt_hwrm_clear_filter(bp, filter);
@@ -126,7 +126,7 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 				       "HWRM filter cannot be freed rc = %d\n",
 					rc);
 		}
-		filter->fw_l2_filter_id = -1;
+		filter->fw_l2_filter_id = UINT64_MAX;
 	}
 	STAILQ_INIT(&bp->free_filter_list);
 

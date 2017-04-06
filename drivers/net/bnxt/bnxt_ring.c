@@ -255,18 +255,18 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 					idx, cpr->hw_stats_ctx_id);
 		if (rc)
 			goto err_out;
-		rxr->rx_prod = 0;
+		rxr->rx_prod = rxr->rx_db_prod = 0;
 		rxr->rx_doorbell =
 		    (char *)bp->eth_dev->pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
 		bp->grp_info[idx].rx_fw_ring_id = ring->fw_ring_id;
-		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+		B_RX_DB(rxr->rx_doorbell, rxr->rx_db_prod);
 		if (bnxt_init_one_rx_ring(rxq)) {
 			RTE_LOG(ERR, PMD, "bnxt_init_one_rx_ring failed!\n");
 			bnxt_rx_queue_release_op(rxq);
 			return -ENOMEM;
 		}
-		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+		B_RX_DB(rxr->rx_doorbell, rxr->rx_db_prod);
 	}
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {

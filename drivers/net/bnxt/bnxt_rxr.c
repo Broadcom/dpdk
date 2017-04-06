@@ -67,31 +67,16 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 	struct rte_mbuf *data;
 
 	data = __bnxt_alloc_rx_data(rxq->mb_pool);
-	if (!data)
+	if (!data) {
+		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
 		return -ENOMEM;
+	}
 
 	rx_buf->mbuf = data;
 
 	rxbd->addr = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR(rx_buf->mbuf));
 
 	return 0;
-}
-
-static void bnxt_reuse_rx_mbuf(struct bnxt_rx_ring_info *rxr, uint16_t cons,
-			       struct rte_mbuf *mbuf)
-{
-	uint16_t prod = rxr->rx_prod;
-	struct bnxt_sw_rx_bd *prod_rx_buf;
-	struct rx_prod_pkt_bd *prod_bd, *cons_bd;
-
-	prod_rx_buf = &rxr->rx_buf_ring[prod];
-
-	prod_rx_buf->mbuf = mbuf;
-
-	prod_bd = &rxr->rx_desc_ring[prod];
-	cons_bd = &rxr->rx_desc_ring[cons];
-
-	prod_bd->addr = cons_bd->addr;
 }
 
 static uint16_t bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
@@ -151,41 +136,11 @@ static uint16_t bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 
 	rx_buf->mbuf = NULL;
 	if (rxcmp1->errors_v2 & RX_CMP_L2_ERRORS) {
-		/* Re-install the mbuf back to the rx ring */
-		bnxt_reuse_rx_mbuf(rxr, cons, mbuf);
+		rte_pktmbuf_free(mbuf);
 
 		rc = -EIO;
 		goto next_rx;
 	}
-	/*
-	 * TODO: Redesign this....
-	 * If the allocation fails, the packet does not get received.
-	 * Simply returning this will result in slowly falling behind
-	 * on the producer ring buffers.
-	 * Instead, "filling up" the producer just before ringing the
-	 * doorbell could be a better solution since it will let the
-	 * producer ring starve until memory is available again pushing
-	 * the drops into hardware and getting them out of the driver
-	 * allowing recovery to a full producer ring.
-	 *
-	 * This could also help with cache usage by preventing per-packet
-	 * calls in favour of a tight loop with the same function being called
-	 * in it.
-	 */
-	if (bnxt_alloc_rx_data(rxq, rxr, prod)) {
-		RTE_LOG(ERR, PMD, "mbuf alloc failed with prod=0x%x\n", prod);
-		rc = -ENOMEM;
-		goto next_rx;
-	}
-
-	/*
-	 * All MBUFs are allocated with the same size under DPDK,
-	 * no optimization for rx_copy_thresh
-	 */
-
-	/* AGG buf operation is deferred */
-
-	/* EW - VLAN reception.  Must compare against the ol_flags */
 
 	*rx_pkt = mbuf;
 next_rx:
@@ -208,7 +163,6 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint32_t last_cons = UINT32_MAX;
 	bool last_v = v;
 	int nb_rx_pkts = 0;
-	bool rx_event = false;
 	struct rx_pkt_cmpl *rxcmp;
 
 	/* Handle RX burst request */
@@ -230,7 +184,6 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				nb_rx_pkts++;
 			else if (rc == -EBUSY)	/* partial completion */
 				break;
-			rx_event = true;
 		}
 
 		last_cons = cons;
@@ -246,8 +199,13 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	cpr->v = last_v;
 
 	B_CP_DB_IDX_DISARM(cpr, cpr->cp_cons);
-	if (rx_event)
-		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+	while (rxr->rx_db_prod != rxr->rx_prod) {
+		// TODO: Needs to handle failure...
+		if (bnxt_alloc_rx_data(rxq, rxr, rxr->rx_db_prod))
+			break;
+		rxr->rx_db_prod = RING_NEXT(rxr->rx_ring_struct, rxr->rx_db_prod);
+	}
+	B_RX_DB(rxr->rx_doorbell, rxr->rx_db_prod);
 	return nb_rx_pkts;
 }
 
@@ -366,7 +324,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 				rxq->queue_id, i, ring->ring_size);
 			break;
 		}
-		rxr->rx_prod = prod;
+		rxr->rx_prod = rxr->rx_db_prod = prod;
 		prod = RING_NEXT(rxr->rx_ring_struct, prod);
 	}
 

@@ -40,7 +40,8 @@ struct bnxt;
 struct bnxt_filter_info {
 	STAILQ_ENTRY(bnxt_filter_info)	next;
 	uint64_t		fw_l2_filter_id;
-#define INVALID_MAC_INDEX	((uint16_t)-1)
+#define INVALID_MAC_INDEX	UINT16_C(0xffff)
+#define PROMISC_MAC_INDEX	UINT16_C(0xfffe)
 	uint16_t		mac_index;
 
 	/* Filter Characteristics */

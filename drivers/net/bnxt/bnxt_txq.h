@@ -34,6 +34,8 @@
 #ifndef _BNXT_TXQ_H_
 #define _BNXT_TXQ_H_
 
+#include <stdbool.h>
+
 struct bnxt_tx_ring_info;
 struct bnxt_cp_ring_info;
 struct bnxt_tx_queue {
@@ -53,6 +55,8 @@ struct bnxt_tx_queue {
 	uint32_t		txq_flags; /* Holds flags for this TXq */
 	uint32_t		ctx_curr; /* Hardware context states */
 	uint8_t			tx_deferred_start; /* not in global dev start */
+	bool			cmpl_next; /* Next BD should trigger a completion
+					    * set after an erro to prevent blockage */
 
 	struct bnxt		*bp;
 	int			index;

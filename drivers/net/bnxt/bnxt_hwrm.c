@@ -212,10 +212,12 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	if (vnic->flags & BNXT_VNIC_INFO_BCAST)
 			mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
 
-	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
-		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
 	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
+	if (BNXT_VF(bp) || bp->pf.max_vfs) {
+		if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
+			mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
+	}
 	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
 	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
@@ -227,6 +229,11 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	HWRM_CHECK_RESULT;
 
+	if (BNXT_PF(bp) && bp->pf.max_vfs == 0) {
+		bnxt_clear_hwrm_vnic_filters(bp, vnic);
+		bnxt_set_hwrm_vnic_filters(bp, vnic);
+	}
+
 	return rc;
 }
 
@@ -237,6 +244,9 @@ int bnxt_hwrm_clear_filter(struct bnxt *bp,
 	struct hwrm_cfa_l2_filter_free_input req = {.req_type = 0 };
 	struct hwrm_cfa_l2_filter_free_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (filter->fw_l2_filter_id == UINT64_MAX)
+		return 0;
+
 	HWRM_PREP(req, CFA_L2_FILTER_FREE, -1, resp);
 
 	req.l2_filter_id = rte_cpu_to_le_64(filter->fw_l2_filter_id);
@@ -245,7 +255,7 @@ int bnxt_hwrm_clear_filter(struct bnxt *bp,
 
 	HWRM_CHECK_RESULT;
 
-	filter->fw_l2_filter_id = -1;
+	filter->fw_l2_filter_id = UINT64_MAX;
 
 	return 0;
 }
@@ -814,7 +824,7 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp,
 
 	HWRM_PREP(req, STAT_CTX_ALLOC, -1, resp);
 
-	req.update_period_ms = rte_cpu_to_le_32(1000);
+	req.update_period_ms = rte_cpu_to_le_32(0);
 
 	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
 	req.stats_dma_addr =
@@ -1134,6 +1144,41 @@ int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id, void *encaped, 
 	return rc;
 }
 
+int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx, struct rte_eth_stats *stats)
+{
+	int rc = 0;
+	struct hwrm_stat_ctx_query_input req = {.req_type = 0};
+	struct hwrm_stat_ctx_query_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, STAT_CTX_QUERY, -1, resp);
+
+	req.stat_ctx_id = rte_cpu_to_le_32(cid);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	stats->q_ipackets[idx] = rte_le_to_cpu_64(resp->rx_ucast_pkts);
+	stats->q_ipackets[idx] += rte_le_to_cpu_64(resp->rx_mcast_pkts);
+	stats->q_ipackets[idx] += rte_le_to_cpu_64(resp->rx_bcast_pkts);
+	stats->q_ibytes[idx] = rte_le_to_cpu_64(resp->rx_ucast_bytes);
+	stats->q_ibytes[idx] += rte_le_to_cpu_64(resp->rx_mcast_bytes);
+	stats->q_ibytes[idx] += rte_le_to_cpu_64(resp->rx_bcast_bytes);
+
+	stats->q_opackets[idx] = rte_le_to_cpu_64(resp->tx_ucast_pkts);
+	stats->q_opackets[idx] += rte_le_to_cpu_64(resp->tx_mcast_pkts);
+	stats->q_opackets[idx] += rte_le_to_cpu_64(resp->tx_bcast_pkts);
+	stats->q_obytes[idx] = rte_le_to_cpu_64(resp->tx_ucast_bytes);
+	stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_mcast_bytes);
+	stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_bcast_bytes);
+
+	stats->q_errors[idx] = rte_le_to_cpu_64(resp->rx_err_pkts);
+	stats->q_errors[idx] += rte_le_to_cpu_64(resp->tx_err_pkts);
+	stats->q_errors[idx] += rte_le_to_cpu_64(resp->rx_drop_pkts);
+
+	return rc;
+}
+
 int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *stats)
 {
 	int rc = 0;
@@ -1147,8 +1192,6 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *s
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
-
-	memset(stats, 0, sizeof(*stats));
 
 	stats->ipackets = rte_le_to_cpu_64(resp->rx_ucast_pkts);
 	stats->ipackets += rte_le_to_cpu_64(resp->rx_mcast_pkts);
@@ -1166,7 +1209,8 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *s
 
 	stats->ierrors = rte_le_to_cpu_64(resp->rx_err_pkts);
 	stats->oerrors = rte_le_to_cpu_64(resp->tx_err_pkts);
-	stats->rx_nombuf = rte_le_to_cpu_64(resp->rx_drop_pkts);
+
+	stats->imissed = rte_le_to_cpu_64(resp->rx_drop_pkts);
 
 	return rc;
 }
@@ -1351,6 +1395,7 @@ int bnxt_free_all_hwrm_rings(struct bnxt *bp)
 					rxr->rx_ring_struct->ring_size *
 					sizeof(*rxr->rx_buf_ring));
 			rxr->rx_prod = 0;
+			rxr->rx_db_prod = 0;
 		}
 		if (cpr->cp_ring_struct->fw_ring_id != INVALID_HW_RING_ID)
 			bnxt_free_cp_ring(bp, cpr, idx);
@@ -1440,6 +1485,12 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	int rc = 0;
 
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
+		if (filter->mac_index == PROMISC_MAC_INDEX) {
+			if (!(vnic->flags & BNXT_VNIC_INFO_PROMISC))
+				continue;
+			if (BNXT_VF(bp) || bp->pf.max_vfs)
+				continue;
+		}
 		rc = bnxt_hwrm_set_filter(bp, vnic, filter);
 		if (rc)
 			break;
