@@ -67,8 +67,10 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 	struct rte_mbuf *data;
 
 	data = __bnxt_alloc_rx_data(rxq->mb_pool);
-	if (!data)
+	if (!data) {
+		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
 		return -ENOMEM;
+	}
 
 	rx_buf->mbuf = data;
 
@@ -199,10 +201,8 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	B_CP_DB_IDX_DISARM(cpr, cpr->cp_cons);
 	while (rxr->rx_db_prod != rxr->rx_prod) {
 		// TODO: Needs to handle failure...
-		if (bnxt_alloc_rx_data(rxq, rxr, rxr->rx_db_prod)) {
-			rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
+		if (bnxt_alloc_rx_data(rxq, rxr, rxr->rx_db_prod))
 			break;
-		}
 		rxr->rx_db_prod = RING_NEXT(rxr->rx_ring_struct, rxr->rx_db_prod);
 	}
 	B_RX_DB(rxr->rx_doorbell, rxr->rx_db_prod);
@@ -319,7 +319,6 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	prod = rxr->rx_prod;
 	for (i = 0; i < ring->ring_size; i++) {
 		if (bnxt_alloc_rx_data(rxq, rxr, prod) != 0) {
-			rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
 			RTE_LOG(WARNING, PMD,
 				"init'ed rx ring %d with %d/%d mbufs only\n",
 				rxq->queue_id, i, ring->ring_size);
