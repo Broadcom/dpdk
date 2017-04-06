@@ -1271,6 +1271,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	rte_eth_copy_pci_info(eth_dev, eth_dev->pci_dev);
 	bp = eth_dev->data->dev_private;
 
+	rte_atomic64_init(&bp->rx_mbuf_alloc_fail);
 	bp->dev_stopped = 1;
 
 	if (bnxt_vf_pciid(eth_dev->pci_dev->id.device_id))

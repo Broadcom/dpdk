@@ -1209,9 +1209,8 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *s
 
 	stats->ierrors = rte_le_to_cpu_64(resp->rx_err_pkts);
 	stats->oerrors = rte_le_to_cpu_64(resp->tx_err_pkts);
-	stats->rx_nombuf = rte_le_to_cpu_64(resp->rx_drop_pkts);
 
-	stats->imissed = 0;	// TODO: Does this map to anything?
+	stats->imissed = rte_le_to_cpu_64(resp->rx_drop_pkts);
 
 	return rc;
 }

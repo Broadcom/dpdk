@@ -85,6 +85,7 @@ void bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i, bnxt_stats);
 	}
 	bnxt_hwrm_func_qstats(bp, 0xffff, bnxt_stats);
+	bnxt_stats->rx_nombuf = rte_atomic64_read(&bp->rx_mbuf_alloc_fail);
 }
 
 void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
@@ -92,4 +93,5 @@ void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	bnxt_clear_all_hwrm_stat_ctxs(bp);
+	rte_atomic64_clear(&bp->rx_mbuf_alloc_fail);
 }
