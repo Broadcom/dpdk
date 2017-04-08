@@ -222,4 +222,21 @@ int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
  *   - (-EINVAL) if bad parameter.
  */
 int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
+
+/**
+ * Returns the number of default RX queues on a VF
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @return
+ *   - Non-negative value - Number of default RX queues
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) if on a function without VFs
+ *   - (-ENOMEM) on an allocation failure
+ *   - (-1) firmware interface error
+ */
+int rte_pmd_bnxt_get_vf_rx_status(uint8_t port, uint16_t vf_id);
+
 #endif /* _PMD_BNXT_H_ */

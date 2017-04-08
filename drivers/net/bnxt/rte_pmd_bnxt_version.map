@@ -10,4 +10,5 @@ DPDK_17.02 {
 	rte_pmd_bnxt_set_all_queues_drop_en;
 	rte_pmd_bnxt_get_vf_stats;
 	rte_pmd_bnxt_reset_vf_stats;
+	rte_pmd_bnxt_get_vf_rx_status;
 };

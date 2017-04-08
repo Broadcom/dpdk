@@ -269,6 +269,9 @@ int bnxt_hwrm_set_filter(struct bnxt *bp,
 	struct hwrm_cfa_l2_filter_alloc_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t enables = 0;
 
+	if (filter->fw_l2_filter_id != UINT64_MAX)
+		bnxt_hwrm_clear_filter(bp, filter);
+
 	HWRM_PREP(req, CFA_L2_FILTER_ALLOC, -1, resp);
 
 	req.flags = rte_cpu_to_le_32(filter->flags);
@@ -2263,6 +2266,29 @@ void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp)
 	vnic->flags = *flag;
 }
 
+static void bnxt_vnic_count(struct bnxt_vnic_info *vnic, void *cbdata)
+{
+	uint32_t *count = cbdata;
+
+	if (vnic->func_default)
+		*count = *count + 1;
+}
+
+static int bnxt_vnic_count_hwrm_stub(struct bnxt *bp __rte_unused, struct bnxt_vnic_info *vnic __rte_unused)
+{
+	return 0;
+}
+
+int bnxt_vf_default_vnic_count(struct bnxt *bp, uint16_t vf)
+{
+	uint32_t count=0;
+
+	bnxt_hwrm_func_vf_vnic_query_and_config(bp, vf, bnxt_vnic_count,
+	    &count, bnxt_vnic_count_hwrm_stub);
+
+	return count;
+}
+
 /*
  * This function queries the VNIC IDs  for a specified VF. It then calls
  * the vnic_cb to update the necessary field in vnic_info with cbdata.
@@ -2302,6 +2328,7 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 
 	if (req.vnic_id_tbl_addr == 0) {
 		RTE_LOG(ERR, PMD, "unable to map VNIC ID table address to physical memory\n");
+		rte_free(vnic_ids);
 		return -ENOMEM;
 	}
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
