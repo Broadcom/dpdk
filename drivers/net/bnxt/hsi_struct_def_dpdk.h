@@ -3444,6 +3444,121 @@ struct hwrm_func_drv_unrgtr_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_func_vf_cfg */
+/*
+ * Description: This command allows configuration of a VF by its driver. If this
+ * function is called by a PF driver, then the HWRM shall fail this command. If
+ * guest VLAN and/or MAC address are provided in this command, then the HWRM
+ * shall set up appropriate MAC/VLAN filters for the VF that is being
+ * configured. A VF driver should set VF MTU/MRU using this command prior to
+ * allocating RX VNICs or TX rings for the corresponding VF.
+ */
+/* Input (32 bytes) */
+
+struct hwrm_func_vf_cfg_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint32_t enables;
+    /* This bit must be '1' for the mtu field to be configured. */
+    #define HWRM_FUNC_VF_CFG_INPUT_ENABLES_MTU                 UINT32_C(0x1)
+    /* This bit must be '1' for the guest_vlan field to be configured. */
+    #define HWRM_FUNC_VF_CFG_INPUT_ENABLES_GUEST_VLAN          UINT32_C(0x2)
+    /* This bit must be '1' for the async_event_cr field to be configured. */
+    #define HWRM_FUNC_VF_CFG_INPUT_ENABLES_ASYNC_EVENT_CR      UINT32_C(0x4)
+    /* This bit must be '1' for the dflt_mac_addr field to be configured. */
+    #define HWRM_FUNC_VF_CFG_INPUT_ENABLES_DFLT_MAC_ADDR       UINT32_C(0x8)
+    uint16_t mtu;
+    /*
+     * The maximum transmission unit requested on the function. The HWRM
+     * should make sure that the mtu of the function does not exceed the mtu
+     * of the physical port that this function is associated with. In
+     * addition to requesting mtu per function, it is possible to configure
+     * mtu per transmit ring. By default, the mtu of each transmit ring
+     * associated with a function is equal to the mtu of the function. The
+     * HWRM should make sure that the mtu of each transmit ring that is
+     * assigned to a function has a valid mtu.
+     */
+    uint16_t guest_vlan;
+    /*
+     * The guest VLAN for the function being configured. This field's format
+     * is same as 802.1Q Tag's Tag Control Information (TCI) format that
+     * includes both Priority Code Point (PCP) and VLAN Identifier (VID).
+     */
+    uint16_t async_event_cr;
+    /*
+     * ID of the target completion ring for receiving asynchronous event
+     * completions. If this field is not valid, then the HWRM shall use the
+     * default completion ring of the function that is being configured as
+     * the target completion ring for providing any asynchronous event
+     * completions for that function. If this field is valid, then the HWRM
+     * shall use the completion ring identified by this ID as the target
+     * completion ring for providing any asynchronous event completions for
+     * the function that is being configured.
+     */
+    uint8_t dflt_mac_addr[6];
+    /*
+     * This value is the current MAC address requested by the VF driver to
+     * be configured on this VF. A value of 00-00-00-00-00-00 indicates no
+     * MAC address configuration is requested by the VF driver. The parent
+     * PF driver may reject or overwrite this MAC address.
+     */
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+
+struct hwrm_func_vf_cfg_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint32_t unused_0;
+    uint8_t unused_1;
+    uint8_t unused_2;
+    uint8_t unused_3;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+} __attribute__((packed));
+
 /* hwrm_func_vf_vnic_ids_query */
 /* Description: This command is used to query vf vnic ids. */
 /* Input (32 bytes) */

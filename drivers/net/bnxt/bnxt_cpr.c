@@ -69,6 +69,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 	struct hwrm_fwd_req_cmpl *fwd_cmpl = (struct hwrm_fwd_req_cmpl *)cmpl;
 	struct input *fwd_cmd;
 	uint16_t fw_vf_id;
+	uint16_t vf_id;
 	uint16_t req_len;
 	int rc;
 
@@ -79,6 +80,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 
 	/* Qualify the fwd request */
 	fw_vf_id = rte_le_to_cpu_16(fwd_cmpl->source_id);
+	vf_id = fw_vf_id - bp->pf.first_vf_id;
 
 	/* TODO: req_len is always 128, is there a way to get the actual request length? */
 	req_len = (rte_le_to_cpu_16(fwd_cmpl->req_len_type) & HWRM_FWD_REQ_CMPL_REQ_LEN_MASK) >>
@@ -87,7 +89,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 		req_len = sizeof(fwreq->encap_request);
 
 	/* Locate VF's forwarded command */
-	fwd_cmd = (struct input *)bp->pf.vf_info[fw_vf_id - bp->pf.first_vf_id].req_buf;
+	fwd_cmd = (struct input *)bp->pf.vf_info[vf_id].req_buf;
 
 	if (fw_vf_id < bp->pf.first_vf_id || fw_vf_id >= (bp->pf.first_vf_id) + bp->pf.active_vfs) {
 		RTE_LOG(ERR, PMD,
@@ -97,7 +99,19 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 		goto reject;
 	}
 
-	if (bnxt_rcv_msg_from_vf(bp, fw_vf_id - bp->pf.first_vf_id, fwd_cmd) == true) {
+	if (bnxt_rcv_msg_from_vf(bp, vf_id, fwd_cmd) == true) {
+		/*
+		 * In older firmware versions, the MAC had to be all zeros for the
+		 * VF to set it's MAC via hwrm_func_vf_cfg.  Set to all zeros if it's
+		 * being configured and has been approved by the app
+		 */
+		if (fwd_cmd->req_type == HWRM_FUNC_VF_CFG) {
+			struct hwrm_func_vf_cfg_input *vfc = (void *)fwd_cmd;
+
+			if (vfc->enables & HWRM_FUNC_VF_CFG_INPUT_ENABLES_DFLT_MAC_ADDR) {
+				bnxt_hwrm_func_vf_mac(bp, vf_id, (const uint8_t *)"\x00\x00\x00\x00\x00");
+			}
+		}
 		/* Forward */
 		rc = bnxt_hwrm_exec_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
 		if (rc) {

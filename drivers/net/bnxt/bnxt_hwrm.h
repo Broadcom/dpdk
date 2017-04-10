@@ -113,7 +113,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up);
 int bnxt_hwrm_func_qcfg(struct bnxt *bp);
 int bnxt_hwrm_allocate_pf_only(struct bnxt *bp);
 int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs);
-int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf, uint8_t *mac_addr);
+int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf, const uint8_t *mac_addr);
 int bnxt_hwrm_pf_evb_mode(struct bnxt *bp);
 int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
 			uint16_t max_bw, uint16_t enables);
@@ -125,6 +125,7 @@ int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 void bnxt_free_tunnel_ports(struct bnxt *bp);
 int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf);
 void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp);
+int bnxt_vf_default_vnic_count(struct bnxt *bp, uint16_t vf);
 int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata,
 	int (*hwrm_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic));
