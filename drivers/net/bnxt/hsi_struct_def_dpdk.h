@@ -5750,6 +5750,283 @@ struct hwrm_vnic_rss_cfg_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_vnic_plcmodes_cfg */
+/*
+ * Description: This function can be used to set placement mode configuration of
+ * the VNIC.
+ */
+/* Input (40 bytes) */
+
+struct hwrm_vnic_plcmodes_cfg_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint32_t flags;
+    /*
+     * When this bit is '1', the VNIC shall be configured to use regular
+     * placement algorithm. By default, the regular placement algorithm
+     * shall be enabled on the VNIC.
+     */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_REGULAR_PLACEMENT UINT32_C(0x1)
+    /*
+     * When this bit is '1', the VNIC shall be configured use the jumbo
+     * placement algorithm.
+     */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_JUMBO_PLACEMENT UINT32_C(0x2)
+    /*
+     * When this bit is '1', the VNIC shall be configured to enable Header-
+     * Data split for IPv4 packets according to the following rules: # If
+     * the packet is identified as TCP/IPv4, then the packet is split at the
+     * beginning of the TCP payload. # If the packet is identified as
+     * UDP/IPv4, then the packet is split at the beginning of UDP payload. #
+     * If the packet is identified as non-TCP and non-UDP IPv4 packet, then
+     * the packet is split at the beginning of the upper layer protocol
+     * header carried in the IPv4 packet.
+     */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_HDS_IPV4        UINT32_C(0x4)
+    /*
+     * When this bit is '1', the VNIC shall be configured to enable Header-
+     * Data split for IPv6 packets according to the following rules: # If
+     * the packet is identified as TCP/IPv6, then the packet is split at the
+     * beginning of the TCP payload. # If the packet is identified as
+     * UDP/IPv6, then the packet is split at the beginning of UDP payload. #
+     * If the packet is identified as non-TCP and non-UDP IPv6 packet, then
+     * the packet is split at the beginning of the upper layer protocol
+     * header carried in the IPv6 packet.
+     */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_HDS_IPV6        UINT32_C(0x8)
+    /*
+     * When this bit is '1', the VNIC shall be configured to enable Header-
+     * Data split for FCoE packets at the beginning of FC payload.
+     */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_HDS_FCOE        UINT32_C(0x10)
+    /*
+     * When this bit is '1', the VNIC shall be configured to enable Header-
+     * Data split for RoCE packets at the beginning of RoCE payload (after
+     * BTH/GRH headers).
+     */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_HDS_ROCE        UINT32_C(0x20)
+    uint32_t enables;
+    /*
+     * This bit must be '1' for the jumbo_thresh_valid field to be
+     * configured.
+     */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_JUMBO_THRESH_VALID UINT32_C(0x1)
+    /* This bit must be '1' for the hds_offset_valid field to be configured. */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_HDS_OFFSET_VALID UINT32_C(0x2)
+    /*
+     * This bit must be '1' for the hds_threshold_valid field to be
+     * configured.
+     */
+    #define HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_HDS_THRESHOLD_VALID UINT32_C(0x4)
+    uint32_t vnic_id;
+    /* Logical vnic ID */
+    uint16_t jumbo_thresh;
+    /*
+     * When jumbo placement algorithm is enabled, this value is used to
+     * determine the threshold for jumbo placement. Packets with length
+     * larger than this value will be placed according to the jumbo
+     * placement algorithm.
+     */
+    uint16_t hds_offset;
+    /*
+     * This value is used to determine the offset into packet buffer where
+     * the split data (payload) will be placed according to one of of HDS
+     * placement algorithm. The lengths of packet buffers provided for split
+     * data shall be larger than this value.
+     */
+    uint16_t hds_threshold;
+    /*
+     * When one of the HDS placement algorithm is enabled, this value is
+     * used to determine the threshold for HDS placement. Packets with
+     * length larger than this value will be placed according to the HDS
+     * placement algorithm. This value shall be in multiple of 4 bytes.
+     */
+    uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+
+struct hwrm_vnic_plcmodes_cfg_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint32_t unused_0;
+    uint8_t unused_1;
+    uint8_t unused_2;
+    uint8_t unused_3;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+} __attribute__((packed));
+
+/* hwrm_vnic_plcmodes_qcfg */
+/*
+ * Description: This function can be used to query placement mode configuration
+ * of the VNIC.
+ */
+/* Input (24 bytes) */
+
+struct hwrm_vnic_plcmodes_qcfg_input {
+    uint16_t req_type;
+    /*
+     * This value indicates what type of request this is. The format for the
+     * rest of the command is determined by this field.
+     */
+    uint16_t cmpl_ring;
+    /*
+     * This value indicates the what completion ring the request will be
+     * optionally completed on. If the value is -1, then no CR completion
+     * will be generated. Any other value must be a valid CR ring_id value
+     * for this function.
+     */
+    uint16_t seq_id;
+    /* This value indicates the command sequence number. */
+    uint16_t target_id;
+    /*
+     * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+     * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+     */
+    uint64_t resp_addr;
+    /*
+     * This is the host address where the response will be written when the
+     * request is complete. This area must be 16B aligned and must be
+     * cleared to zero before the request is made.
+     */
+    uint32_t vnic_id;
+    /* Logical vnic ID */
+    uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (24 bytes) */
+
+struct hwrm_vnic_plcmodes_qcfg_output {
+    uint16_t error_code;
+    /*
+     * Pass/Fail or error type Note: receiver to verify the in parameters,
+     * and fail the call with an error when appropriate
+     */
+    uint16_t req_type;
+    /* This field returns the type of original request. */
+    uint16_t seq_id;
+    /* This field provides original sequence number of the command. */
+    uint16_t resp_len;
+    /*
+     * This field is the length of the response in bytes. The last byte of
+     * the response is a valid flag that will read as '1' when the command
+     * has been completely written to memory.
+     */
+    uint32_t flags;
+    /*
+     * When this bit is '1', the VNIC is configured to use regular placement
+     * algorithm.
+     */
+    #define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_REGULAR_PLACEMENT UINT32_C(0x1)
+    /*
+     * When this bit is '1', the VNIC is configured to use the jumbo
+     * placement algorithm.
+     */
+    #define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_JUMBO_PLACEMENT UINT32_C(0x2)
+    /*
+     * When this bit is '1', the VNIC is configured to enable Header-Data
+     * split for IPv4 packets.
+     */
+    #define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_HDS_IPV4      UINT32_C(0x4)
+    /*
+     * When this bit is '1', the VNIC is configured to enable Header-Data
+     * split for IPv6 packets.
+     */
+    #define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_HDS_IPV6      UINT32_C(0x8)
+    /*
+     * When this bit is '1', the VNIC is configured to enable Header-Data
+     * split for FCoE packets.
+     */
+    #define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_HDS_FCOE      UINT32_C(0x10)
+    /*
+     * When this bit is '1', the VNIC is configured to enable Header-Data
+     * split for RoCE packets.
+     */
+    #define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_HDS_ROCE      UINT32_C(0x20)
+    /*
+     * When this bit is '1', the VNIC is configured to be the default VNIC
+     * of the requesting function.
+     */
+    #define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_DFLT_VNIC     UINT32_C(0x40)
+    uint16_t jumbo_thresh;
+    /*
+     * When jumbo placement algorithm is enabled, this value is used to
+     * determine the threshold for jumbo placement. Packets with length
+     * larger than this value will be placed according to the jumbo
+     * placement algorithm.
+     */
+    uint16_t hds_offset;
+    /*
+     * This value is used to determine the offset into packet buffer where
+     * the split data (payload) will be placed according to one of of HDS
+     * placement algorithm. The lengths of packet buffers provided for split
+     * data shall be larger than this value.
+     */
+    uint16_t hds_threshold;
+    /*
+     * When one of the HDS placement algorithm is enabled, this value is
+     * used to determine the threshold for HDS placement. Packets with
+     * length larger than this value will be placed according to the HDS
+     * placement algorithm. This value shall be in multiple of 4 bytes.
+     */
+    uint8_t unused_0;
+    uint8_t unused_1;
+    uint8_t unused_2;
+    uint8_t unused_3;
+    uint8_t unused_4;
+    uint8_t valid;
+    /*
+     * This field is used in Output records to indicate that the output is
+     * completely written to RAM. This field should be read as '1' to
+     * indicate that the output has been completely written. When writing a
+     * command completion or response to an internal processor, the order of
+     * writes has to be such that this field is written last.
+     */
+} __attribute__((packed));
+
 /* hwrm_vnic_rss_cos_lb_ctx_alloc */
 /* Description: This function is used to allocate COS/Load Balance context. */
 /* Input (16 bytes) */
