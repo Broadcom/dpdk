@@ -74,8 +74,9 @@ void bnxt_init_vnics(struct bnxt *bp)
 	for (i = 0; i < max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		vnic->fw_vnic_id = (uint16_t)HWRM_NA_SIGNATURE;
-		vnic->fw_rss_cos_lb_ctx = (uint16_t)HWRM_NA_SIGNATURE;
-		vnic->ctx_is_rss_cos_lb = HW_CONTEXT_NONE;
+		vnic->rss_rule = (uint16_t)HWRM_NA_SIGNATURE;
+		vnic->cos_rule = (uint16_t)HWRM_NA_SIGNATURE;
+		vnic->lb_rule = (uint16_t)HWRM_NA_SIGNATURE;
 
 		for (j = 0; j < MAX_QUEUES_PER_VNIC; j++)
 			vnic->fw_grp_ids[j] = (uint16_t)HWRM_NA_SIGNATURE;
