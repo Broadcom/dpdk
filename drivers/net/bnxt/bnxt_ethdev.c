@@ -1125,6 +1125,8 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 	for (i=0; vf_mask; i++, vf_mask >>= 1) {
 		if (vf_mask & 1) {
 			bp->pf.vf_info[i].dflt_vlan = vlan_on ? vlan : 0;
+			if (bnxt_hwrm_func_qcfg_current_vf_vlan(bp, i) == bp->pf.vf_info[i].dflt_vlan)
+				continue;
 			ret = bnxt_hwrm_set_vf_vlan(bp, i);
 			if (ret)
 				rc = ret;

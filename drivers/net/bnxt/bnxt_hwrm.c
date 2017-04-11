@@ -882,8 +882,9 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		vnic->fw_grp_ids[j] = bp->grp_info[i].fw_grp_id;
 	}
 	vnic->dflt_ring_grp = bp->grp_info[vnic->start_grp_id].fw_grp_id;
-	vnic->fw_rss_cos_lb_ctx = (uint16_t)HWRM_NA_SIGNATURE;
-	vnic->ctx_is_rss_cos_lb = HW_CONTEXT_NONE;
+	vnic->rss_rule = (uint16_t)HWRM_NA_SIGNATURE;
+	vnic->cos_rule = (uint16_t)HWRM_NA_SIGNATURE;
+	vnic->lb_rule = (uint16_t)HWRM_NA_SIGNATURE;
 	vnic->mru = bp->eth_dev->data->mtu + ETHER_HDR_LEN +
 				ETHER_CRC_LEN + VLAN_TAG_SIZE;
 	HWRM_PREP(req, VNIC_ALLOC, -1, resp);
@@ -901,19 +902,26 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	int rc = 0;
 	struct hwrm_vnic_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint32_t ctx_enable_flag = HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE;
 
 	HWRM_PREP(req, VNIC_CFG, -1, resp);
 
 	/* Only RSS support for now TBD: COS & LB */
 	req.enables =
 	    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_ENABLES_DFLT_RING_GRP |
-			     HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE |
 			     HWRM_VNIC_CFG_INPUT_ENABLES_MRU);
+	if (vnic->lb_rule != 0xffff)
+		ctx_enable_flag = HWRM_VNIC_CFG_INPUT_ENABLES_LB_RULE;
+	if (vnic->cos_rule != 0xffff)
+		ctx_enable_flag = HWRM_VNIC_CFG_INPUT_ENABLES_COS_RULE;
+	if (vnic->rss_rule != 0xffff)
+		ctx_enable_flag = HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE;
+	req.enables |= rte_cpu_to_le_32(ctx_enable_flag);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 	req.dflt_ring_grp = rte_cpu_to_le_16(vnic->dflt_ring_grp);
-	req.rss_rule = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
-	req.cos_rule = rte_cpu_to_le_16(0xffff);
-	req.lb_rule = rte_cpu_to_le_16(0xffff);
+	req.rss_rule = rte_cpu_to_le_16(vnic->rss_rule);
+	req.cos_rule = rte_cpu_to_le_16(vnic->cos_rule);
+	req.lb_rule = rte_cpu_to_le_16(vnic->lb_rule);
 	req.mru = rte_cpu_to_le_16(vnic->mru);
 	if (vnic->func_default)
 		req.flags |=
@@ -924,6 +932,12 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	if (vnic->bd_stall)
 		req.flags |=
 		    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_BD_STALL_MODE);
+	if (vnic->roce_dual)
+		req.flags |= rte_cpu_to_le_32(HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_DUAL_VNIC_MODE);
+	if (vnic->roce_only)
+		req.flags |= rte_cpu_to_le_32(HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_ONLY_VNIC_MODE);
+	if (vnic->rss_dflt_cr)
+		req.flags |= rte_cpu_to_le_32(HWRM_VNIC_QCFG_OUTPUT_FLAGS_RSS_DFLT_CR_MODE);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -950,9 +964,9 @@ int bnxt_hwrm_vnic_qcfg(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 	HWRM_CHECK_RESULT;
 
 	vnic->dflt_ring_grp = rte_le_to_cpu_16(resp->dflt_ring_grp);
-	vnic->fw_rss_cos_lb_ctx = rte_le_to_cpu_16(resp->rss_rule);
-	// vnic->cos_rule = rte_le_to_cpu_16(resp->cos_rule);
-	// vnic->lb_rule = rte_le_to_cpu_16(resp->lb_rule);
+	vnic->rss_rule = rte_le_to_cpu_16(resp->rss_rule);
+	vnic->cos_rule = rte_le_to_cpu_16(resp->cos_rule);
+	vnic->lb_rule = rte_le_to_cpu_16(resp->lb_rule);
 	vnic->mru = rte_le_to_cpu_16(resp->mru);
 	vnic->func_default = rte_le_to_cpu_32(
 			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_DEFAULT;
@@ -960,6 +974,12 @@ int bnxt_hwrm_vnic_qcfg(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_VLAN_STRIP_MODE;
 	vnic->bd_stall = rte_le_to_cpu_32(
 			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_BD_STALL_MODE;
+	vnic->roce_dual = rte_le_to_cpu_32(
+			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_DUAL_VNIC_MODE;
+	vnic->roce_only = rte_le_to_cpu_32(
+			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_ONLY_VNIC_MODE;
+	vnic->rss_dflt_cr = rte_le_to_cpu_32(
+			resp->flags) & HWRM_VNIC_QCFG_OUTPUT_FLAGS_RSS_DFLT_CR_MODE;
 
 	return rc;
 }
@@ -977,7 +997,7 @@ int bnxt_hwrm_vnic_ctx_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	HWRM_CHECK_RESULT;
 
-	vnic->fw_rss_cos_lb_ctx = rte_le_to_cpu_16(resp->rss_cos_lb_ctx_id);
+	vnic->rss_rule = rte_le_to_cpu_16(resp->rss_cos_lb_ctx_id);
 
 	return rc;
 }
@@ -991,13 +1011,13 @@ int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	HWRM_PREP(req, VNIC_RSS_COS_LB_CTX_FREE, -1, resp);
 
-	req.rss_cos_lb_ctx_id = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
+	req.rss_cos_lb_ctx_id = rte_cpu_to_le_16(vnic->rss_rule);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
 
-	vnic->fw_rss_cos_lb_ctx = INVALID_HW_RING_ID;
+	vnic->rss_rule = INVALID_HW_RING_ID;
 
 	return rc;
 }
@@ -1038,7 +1058,7 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 	    rte_cpu_to_le_64(vnic->rss_table_dma_addr);
 	req.hash_key_tbl_addr =
 	    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
-	req.rss_ctx_idx = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
+	req.rss_ctx_idx = rte_cpu_to_le_16(vnic->rss_rule);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -1981,6 +2001,28 @@ static void reserve_resources_from_vf(struct bnxt *bp, struct hwrm_func_cfg_inpu
 	         forced to 1 in this case */
 	//bp->max_vnics -= rte_le_to_cpu_16(esp->max_vnics);
 	bp->max_ring_grps -= rte_le_to_cpu_16(resp->max_hw_ring_grps);
+}
+
+int bnxt_hwrm_func_qcfg_current_vf_vlan(struct bnxt *bp, int vf)
+{
+	struct hwrm_func_qcfg_input req = {0};
+	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	/* Check for zero MAC address */
+	HWRM_PREP(req, FUNC_QCFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm_func_qcfg failed rc:%d\n", rc);
+		return -1;
+	}
+	else if (resp->error_code) {
+		rc = rte_le_to_cpu_16(resp->error_code);
+		RTE_LOG(ERR, PMD, "hwrm_func_qcfg error %d\n", rc);
+		return -1;
+	}
+	return rte_le_to_cpu_16(resp->vlan);
 }
 
 static int update_pf_resource_max(struct bnxt *bp)
