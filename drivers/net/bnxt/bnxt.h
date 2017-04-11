@@ -63,6 +63,8 @@ struct bnxt_child_vf_info {
 	void			*req_buf;
 	uint8_t			mac_spoof_en;
 	uint8_t			vlan_spoof_en;
+	uint8_t			mac_count;
+	struct ether_addr	mac_addrs[ETH_NUM_RECEIVE_MAC_ADDR];
 };
 
 struct bnxt_pf_info {
