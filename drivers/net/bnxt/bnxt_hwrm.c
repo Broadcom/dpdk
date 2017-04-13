@@ -910,7 +910,7 @@ static int bnxt_hwrm_vnic_plcmodes_qcfg(struct bnxt *bp, struct bnxt_vnic_info *
 	struct hwrm_vnic_plcmodes_qcfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_plcmodes_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
 
-	HWRM_PREP(req, VNIC_CFG, -1, resp);
+	HWRM_PREP(req, PLCMODES_QCFG, -1, resp);
 
 	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
 
@@ -934,7 +934,7 @@ static int bnxt_hwrm_vnic_plcmodes_cfg(struct bnxt *bp, struct bnxt_vnic_info *v
 	struct hwrm_vnic_plcmodes_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_plcmodes_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 
-	HWRM_PREP(req, VNIC_CFG, -1, resp);
+	HWRM_PREP(req, PLCMODES_CFG, -1, resp);
 
 	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
 	req.flags = rte_cpu_to_le_32(pmode->flags);
