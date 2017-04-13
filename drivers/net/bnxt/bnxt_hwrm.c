@@ -54,6 +54,13 @@
 
 #define HWRM_CMD_TIMEOUT		2000
 
+struct bnxt_plcmodes_cfg {
+	uint32_t	flags;
+	uint16_t	jumbo_thresh;
+	uint16_t	hds_offset;
+	uint16_t	hds_threshold;
+};
+
 static int page_getenum(size_t size)
 {
 	if (size <= 1<<4)
@@ -897,12 +904,67 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+static int bnxt_hwrm_vnic_plcmodes_qcfg(struct bnxt *bp, struct bnxt_vnic_info *vnic, struct bnxt_plcmodes_cfg *pmode)
+{
+	int rc = 0;
+	struct hwrm_vnic_plcmodes_qcfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_plcmodes_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_PLCMODES_QCFG, -1, resp);
+
+	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	pmode->flags = rte_le_to_cpu_32(resp->flags);
+	/* dflt_vnic bit doesn't exist in the _cfg command */
+	pmode->flags &= ~(HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_DFLT_VNIC);
+	pmode->jumbo_thresh = rte_le_to_cpu_16(resp->jumbo_thresh);
+	pmode->hds_offset = rte_le_to_cpu_16(resp->hds_offset);
+	pmode->hds_threshold = rte_le_to_cpu_16(resp->hds_threshold);
+
+	return rc;
+}
+
+static int bnxt_hwrm_vnic_plcmodes_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic, struct bnxt_plcmodes_cfg *pmode)
+{
+	int rc = 0;
+	struct hwrm_vnic_plcmodes_cfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_plcmodes_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_PLCMODES_CFG, -1, resp);
+
+	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
+	req.flags = rte_cpu_to_le_32(pmode->flags);
+	req.jumbo_thresh = rte_cpu_to_le_16(pmode->jumbo_thresh);
+	req.hds_offset = rte_cpu_to_le_16(pmode->hds_offset);
+	req.hds_threshold = rte_cpu_to_le_16(pmode->hds_threshold);
+	req.enables = rte_cpu_to_le_32(
+	    HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_HDS_THRESHOLD_VALID |
+	    HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_HDS_OFFSET_VALID |
+	    HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_JUMBO_THRESH_VALID
+	);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int rc = 0;
 	struct hwrm_vnic_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t ctx_enable_flag = HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE;
+	struct bnxt_plcmodes_cfg pmodes;
+
+	rc = bnxt_hwrm_vnic_plcmodes_qcfg(bp, vnic, &pmodes);
+	if (rc)
+		return rc;
 
 	HWRM_PREP(req, VNIC_CFG, -1, resp);
 
@@ -942,6 +1004,8 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
+
+	rc = bnxt_hwrm_vnic_plcmodes_cfg(bp, vnic, &pmodes);
 
 	return rc;
 }
