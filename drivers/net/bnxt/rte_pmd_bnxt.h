@@ -239,4 +239,32 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
  */
 int rte_pmd_bnxt_get_vf_rx_status(uint8_t port, uint16_t vf_id);
 
+/**
+ * Queries the TX drop counter for the function
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param count
+ *    Pointer to a uint64_t that will be populated with the counter value.
+ * @return
+ *   - Positive Non-zero value - Error code from HWRM
+ */
+int rte_pmd_bnxt_get_tx_drop_count(uint8_t port, uint64_t *count);
+
+/**
+ * Queries the TX drop counter for the function
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    VF on which to get.
+ * @param count
+ *    Pointer to a uint64_t that will be populated with the counter value.
+ * @return
+ *   - Positive Non-zero value - Error code from HWRM
+ *   - (-EINVAL) invalid vf_id specified.
+ *   - (-ENOTSUP) Ethernet device is not a PF
+ */
+int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id, uint64_t *count);
+
 #endif /* _PMD_BNXT_H_ */
