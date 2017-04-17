@@ -450,5 +450,5 @@ int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id, uint64_t *co
 		return -ENOTSUP;
 	}
 
-	return bnxt_hwrm_func_qstats_tx_drop(bp, vf_id, count);
+	return bnxt_hwrm_func_qstats_tx_drop(bp, bp->first_vf_id + vf_id, count);
 }
