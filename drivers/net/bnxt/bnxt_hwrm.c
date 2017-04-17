@@ -1266,6 +1266,26 @@ int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx, struct rte_eth_
 	return rc;
 }
 
+int bnxt_hwrm_func_qstats_tx_drop(struct bnxt *bp, uint16_t fid, uint64_t *dropped)
+{
+	int rc = 0;
+	struct hwrm_func_qstats_input req = {.req_type = 0};
+	struct hwrm_func_qstats_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, FUNC_QSTATS, -1, resp);
+
+	req.fid = rte_cpu_to_le_16(fid);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	if (dropped)
+		*dropped = rte_le_to_cpu_64(resp->tx_drop_pkts);
+
+	return rc;
+}
+
 int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid, struct rte_eth_stats *stats)
 {
 	int rc = 0;
