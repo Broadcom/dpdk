@@ -13,4 +13,5 @@ DPDK_17.02 {
 	rte_pmd_bnxt_get_vf_rx_status;
 	rte_pmd_bnxt_get_tx_drop_count;
 	rte_pmd_bnxt_get_vf_tx_drop_count;
+	rte_pmd_bnxt_mac_addr_add;
 };
