@@ -520,9 +520,13 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 					bp->pf.first_vf_id + vf_id);
 		if (rc)
 			goto exit;
-		if (vnic.func_default)
-			break;
+		if (vnic.func_default) {
+			RTE_LOG(ERR, PMD, "Default VNIC %d\n", i);
+			goto apply;
+		}
 	}
+	goto exit;
+apply:
 	rc = bnxt_hwrm_set_filter(bp, &vnic, &filter);
 exit:
 	rte_free(vnic_ids);
