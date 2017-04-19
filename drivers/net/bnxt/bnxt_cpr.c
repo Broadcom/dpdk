@@ -63,6 +63,22 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	}
 }
 
+/* validate MAC address for VF */
+static int bnxt_validate_vf_mac(struct bnxt *bp, int vf, void *fwd_cmd)
+{
+	struct hwrm_func_vf_cfg_input *vfc = (void *)fwd_cmd;
+	uint16_t cnt = bp->pf.vf_info[vf].mac_count;
+	int i;
+
+	for (i = 0; i < cnt; i++) {
+		if (memcmp(vfc->dflt_mac_addr,
+			&bp->pf.vf_info[vf].mac_addrs[i],
+			ETHER_ADDR_LEN) == 0)
+			return 1;
+	}
+	return 0;
+}
+
 void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 {
 	struct hwrm_exec_fwd_resp_input *fwreq;
@@ -109,8 +125,14 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 			struct hwrm_func_vf_cfg_input *vfc = (void *)fwd_cmd;
 
 			if (vfc->enables & HWRM_FUNC_VF_CFG_INPUT_ENABLES_DFLT_MAC_ADDR) {
-				bnxt_hwrm_func_vf_mac(bp, vf_id, (const uint8_t *)"\x00\x00\x00\x00\x00");
+				if (bnxt_validate_vf_mac(bp, vf_id, fwd_cmd)) {
+					bnxt_hwrm_func_vf_mac(bp, vf_id, (const uint8_t *)"\x00\x00\x00\x00\x00");
+				} else {
+					RTE_LOG(ERR, PMD, "No matching MAC\n");
+					goto reject;
+				}
 			}
+
 		}
 		/* Forward */
 		rc = bnxt_hwrm_exec_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);

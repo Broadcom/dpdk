@@ -36,6 +36,7 @@
 
 #include <rte_dev.h>
 #include <rte_ethdev.h>
+//#include <rte_ether.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 
@@ -600,6 +601,16 @@ static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 
 	if (!vnic) {
 		RTE_LOG(ERR, PMD, "VNIC not found for pool %d!\n", pool);
+		RTE_LOG(ERR, PMD, "VNIC index %d, for pool %d!\n", index, pool);
+		if (bp->pdev->max_vfs && (pool < bp->pdev->max_vfs)) {
+			uint16_t cnt = bp->pf.vf_info[pool].mac_count;
+
+			bnxt_hwrm_func_vf_mac(bp, pool, (uint8_t *)mac_addr);
+			/* Update address in PF.vf_info */
+			ether_addr_copy(mac_addr,
+					&bp->pf.vf_info[pool].mac_addrs[cnt]);
+			bp->pf.vf_info[pool].mac_count++;
+		}
 		return;
 	}
 	/* Attach requested MAC address to the new l2_filter */
