@@ -463,11 +463,7 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 	struct bnxt *bp;
 	struct bnxt_filter_info filter;
 	struct bnxt_vnic_info vnic;
-	uint16_t *vnic_ids;
-	size_t vnic_id_sz;
-	int num_vnic_ids;
-	size_t sz;
-	int rc, i;
+	int rc;
 
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
@@ -483,27 +479,16 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 		return -ENOTSUP;
 	}
 
-	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
-	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
-			RTE_CACHE_LINE_SIZE);
-	if (vnic_ids == NULL) {
-		rc = -ENOMEM;
-		return rc;
-	}
-
-	for (sz = 0; sz < vnic_id_sz; sz += getpagesize())
-		rte_mem_lock_page(((char *)vnic_ids) + sz);
-
-	rc = bnxt_hwrm_func_vf_vnic_query(bp, vf_id, vnic_ids);
-	if (rc <= 0)
-		goto exit;
-	num_vnic_ids = rc;
-	//rc = rte_le_to_cpu_16(vnic_ids[0]);
 	/* query the default VNIC id used by the function */
-	//rc = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf_id);
-	//if (rc < 0)
-		//goto exit;
+	rc = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf_id);
+	if (rc < 0)
+		goto exit;
 
+	memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
+	vnic.fw_vnic_id = rte_le_to_cpu_16(rc);
+	rc = bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf_id);
+	if (rc < 0)
+		goto exit;
 
 	filter.fw_l2_filter_id = UINT64_MAX;
 	filter.flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
@@ -511,24 +496,7 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
 	memcpy(filter.l2_addr, addr, ETHER_ADDR_LEN);
 	memset(filter.l2_addr_mask, 0xff, ETHER_ADDR_LEN);
-
-	/* Loop through to find the default VNIC ID */
-	for (i = 0; i < num_vnic_ids; i++) {
-		memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
-		vnic.fw_vnic_id = rte_le_to_cpu_16(vnic_ids[i]);
-		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic,
-					bp->pf.first_vf_id + vf_id);
-		if (rc)
-			goto exit;
-		if (vnic.func_default) {
-			RTE_LOG(ERR, PMD, "Default VNIC %d\n", i);
-			goto apply;
-		}
-	}
-	goto exit;
-apply:
 	rc = bnxt_hwrm_set_filter(bp, &vnic, &filter);
 exit:
-	rte_free(vnic_ids);
 	return rc;
 }

@@ -2537,9 +2537,51 @@ int bnxt_hwrm_func_vf_vnic_query(struct bnxt *bp, uint16_t vf,
 
 int bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(struct bnxt *bp, int vf)
 {
+	struct bnxt_vnic_info vnic;
+	uint16_t *vnic_ids;
+	size_t vnic_id_sz;
+	int num_vnic_ids, i;
+	size_t sz;
+	int rc;
+
+	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
+	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
+			RTE_CACHE_LINE_SIZE);
+	if (vnic_ids == NULL) {
+		rc = -ENOMEM;
+		return rc;
+	}
+
+	for (sz = 0; sz < vnic_id_sz; sz += getpagesize())
+		rte_mem_lock_page(((char *)vnic_ids) + sz);
+
+	rc = bnxt_hwrm_func_vf_vnic_query(bp, vf, vnic_ids);
+	if (rc <= 0)
+		goto exit;
+	num_vnic_ids = rc;
+
+	/* Loop through to find the default VNIC ID */
+	for (i = 0; i < num_vnic_ids; i++) {
+		memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
+		vnic.fw_vnic_id = rte_le_to_cpu_16(vnic_ids[i]);
+		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic,
+					bp->pf.first_vf_id + vf);
+		if (rc)
+			goto exit;
+		if (vnic.func_default) {
+			rte_free(vnic_ids);
+			return vnic.fw_vnic_id;
+		}
+	}
+	/* Could not find a default VNIC. */
+	RTE_LOG(ERR, PMD, "No default VNIC\n");
+exit:
+	rte_free(vnic_ids);
+	return -1;
+
+#if 0
 	struct hwrm_func_qcfg_input req = {0};
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
-	int rc;
 
 	HWRM_PREP(req, FUNC_QCFG, -1, resp);
 	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
@@ -2553,4 +2595,5 @@ int bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(struct bnxt *bp, int vf)
 		return -1;
 	}
 	return rte_le_to_cpu_16(resp->dflt_vnic_id);
+#endif
 }
