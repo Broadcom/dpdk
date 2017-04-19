@@ -33,6 +33,7 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include <rte_dev.h>
 #include <rte_ethdev.h>
@@ -451,4 +452,51 @@ int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id, uint64_t *co
 	}
 
 	return bnxt_hwrm_func_qstats_tx_drop(bp, bp->pf.first_vf_id + vf_id, count);
+}
+
+
+int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
+				uint32_t vf_id)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct bnxt *bp;
+	struct bnxt_filter_info filter;
+	struct bnxt_vnic_info vnic;
+	int rc;
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (vf_id >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"Attempt to config VF %d MAC on non-PF port %d!\n",
+			vf_id, port);
+		return -ENOTSUP;
+	}
+
+	/* query the default VNIC id used by the function */
+	rc = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf_id);
+	if (rc < 0)
+		goto exit;
+
+	memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
+	vnic.fw_vnic_id = rte_le_to_cpu_16(rc);
+	rc = bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf_id);
+	if (rc < 0)
+		goto exit;
+
+	filter.fw_l2_filter_id = UINT64_MAX;
+	filter.flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
+	filter.enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
+	memcpy(filter.l2_addr, addr, ETHER_ADDR_LEN);
+	memset(filter.l2_addr_mask, 0xff, ETHER_ADDR_LEN);
+	rc = bnxt_hwrm_set_filter(bp, &vnic, &filter);
+exit:
+	return rc;
 }
