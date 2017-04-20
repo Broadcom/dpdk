@@ -1147,6 +1147,8 @@ int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf, const uint8_t *mac_addr)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
 
+	bp->pf.vf_info[vf].random_mac = false;
+
 	return rc;
 }
 
@@ -2047,6 +2049,7 @@ static void add_random_mac_if_needed(struct bnxt *bp, struct hwrm_func_cfg_input
 		if (memcmp(resp->mac_address, "\x00\x00\x00\x00\x00", 6) == 0) {
 			cfg_req->enables |= rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
 			eth_random_addr(cfg_req->dflt_mac_addr);
+			bp->pf.vf_info[vf].random_mac = true;
 		}
 		else {
 			memcpy(cfg_req->dflt_mac_addr, resp->mac_address, sizeof(resp->mac_address));
