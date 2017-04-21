@@ -618,7 +618,7 @@ static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 	filter->mac_index = index;
 	memcpy(filter->l2_addr, mac_addr, ETHER_ADDR_LEN);
-	bnxt_hwrm_set_filter(bp, vnic, filter);
+	bnxt_hwrm_set_filter(bp, vnic->fw_vnic_id, filter);
 }
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
