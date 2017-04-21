@@ -304,7 +304,7 @@ int bnxt_hwrm_set_filter(struct bnxt *bp,
 	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_ID)
 		req.src_id = rte_cpu_to_le_32(filter->src_id);
 	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_TYPE)
-		req.src_type = rte_cpu_to_le_32(filter->src_type);
+		req.src_type = filter->src_type;
 
 	req.enables = rte_cpu_to_le_32(enables);
 
