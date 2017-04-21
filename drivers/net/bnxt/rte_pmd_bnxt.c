@@ -503,7 +503,8 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
 	memcpy(filter.l2_addr, addr, ETHER_ADDR_LEN);
 	memset(filter.l2_addr_mask, 0xff, ETHER_ADDR_LEN);
-	rc = bnxt_hwrm_set_filter(bp, &vnic, &filter);
+	rc = bnxt_hwrm_set_filter(bp, vnic.fw_vnic_id, &filter);
+
 exit:
 	return rc;
 }

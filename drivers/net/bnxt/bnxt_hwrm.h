@@ -49,7 +49,7 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_clear_filter(struct bnxt *bp,
 			   struct bnxt_filter_info *filter);
 int bnxt_hwrm_set_filter(struct bnxt *bp,
-			 struct bnxt_vnic_info *vnic,
+			 uint16_t dst_id,
 			 struct bnxt_filter_info *filter);
 
 int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
@@ -132,8 +132,6 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata,
 	int (*hwrm_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic));
 int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf);
-int bnxt_hwrm_func_vf_vnic_query(struct bnxt *bp, uint16_t vf,
-					uint16_t *vnic_ids);
 int bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(struct bnxt *bp, int vf);
 
 #endif
