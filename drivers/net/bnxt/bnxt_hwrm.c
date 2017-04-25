@@ -820,7 +820,6 @@ int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	HWRM_PREP(req, STAT_CTX_CLR_STATS, -1, resp);
 
 	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
-	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -840,7 +839,6 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp,
 
 	req.update_period_ms = rte_cpu_to_le_32(0);
 
-	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
 	req.stats_dma_addr =
 	    rte_cpu_to_le_64(cpr->hw_stats_map);
 
@@ -864,7 +862,6 @@ int bnxt_hwrm_stat_ctx_free(struct bnxt *bp,
 	HWRM_PREP(req, STAT_CTX_FREE, -1, resp);
 
 	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
-	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
