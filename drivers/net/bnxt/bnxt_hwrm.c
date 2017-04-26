@@ -359,6 +359,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 				else {
 					rte_mem_lock_page(bp->pf.vf_info[i].vlan_table);
 				}
+				STAILQ_INIT(&bp->pf.vf_info[i].filter);
 			}
 		}
 	}

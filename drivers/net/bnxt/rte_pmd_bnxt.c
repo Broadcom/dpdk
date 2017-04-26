@@ -108,8 +108,6 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 	if (bp->vnic_info == NULL)
 		return -ENODEV;
 
-	RTE_LOG(ERR, PMD, "rte_pmd_bnxt_set_all_queues_drop_en() non-functional\n");
-	return -1;
 	/* Stall PF */
 	for (i = 0; i < bp->nr_vnics; i++) {
 		bp->vnic_info[i].bd_stall = !on;
@@ -309,8 +307,6 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 		return -ENOTSUP;
 	}
 
-	RTE_LOG(ERR, PMD, "rte_pmd_bnxt_set_vf_vlan_stripq() non-functional\n");
-	return -1;
 	rc = bnxt_hwrm_func_vf_vnic_query_and_config(bp, vf,
 				rte_pmd_bnxt_set_vf_vlan_stripq_cb, &on,
 				bnxt_hwrm_vnic_cfg);
@@ -465,7 +461,7 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct bnxt *bp;
-	struct bnxt_filter_info filter;
+	struct bnxt_filter_info *filter;
 	struct bnxt_vnic_info vnic;
 	int rc;
 
@@ -486,7 +482,7 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 	/* If the VF currently uses a random MAC, update default to this one */
 	if (bp->pf.vf_info[vf_id].random_mac) {
 		if (rte_pmd_bnxt_get_vf_rx_status(port, vf_id) <= 0) {
-			bnxt_hwrm_func_vf_mac(bp, vf_id, (uint8_t *)addr);
+			rc = bnxt_hwrm_func_vf_mac(bp, vf_id, (uint8_t *)addr);
 		}
 	}
 
@@ -501,13 +497,27 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 	if (rc < 0)
 		goto exit;
 
-	filter.fw_l2_filter_id = UINT64_MAX;
-	filter.flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
-	filter.enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
+	STAILQ_FOREACH(filter, &bp->pf.vf_info[vf_id].filter, next) {
+		if (filter->flags == HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX
+		    && filter->enables == (HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR
+		        | HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK)
+		    && memcmp(addr, filter->l2_addr, ETHER_ADDR_LEN) == 0) {
+			bnxt_hwrm_clear_filter(bp, filter);
+			break;
+		}
+	}
+
+	if (filter == NULL) {
+		filter = bnxt_alloc_vf_filter(bp, vf_id);
+	}
+
+	filter->fw_l2_filter_id = UINT64_MAX;
+	filter->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
+	filter->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
-	memcpy(filter.l2_addr, addr, ETHER_ADDR_LEN);
-	memset(filter.l2_addr_mask, 0xff, ETHER_ADDR_LEN);
-	rc = bnxt_hwrm_set_filter(bp, vnic.fw_vnic_id, &filter);
+	memcpy(filter->l2_addr, addr, ETHER_ADDR_LEN);
+	memset(filter->l2_addr_mask, 0xff, ETHER_ADDR_LEN);
+	rc = bnxt_hwrm_set_filter(bp, vnic.fw_vnic_id, filter);
 
 exit:
 	return rc;
