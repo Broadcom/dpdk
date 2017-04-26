@@ -344,8 +344,10 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 			bp->pf.vf_info = rte_malloc("bnxt_vf_info",
 			    sizeof(bp->pf.vf_info[0]) * new_max_vfs, 0);
 			bp->pf.max_vfs = new_max_vfs;
-			for (i=0; i<new_max_vfs; i++)
+			for (i=0; i<new_max_vfs; i++) {
 				bp->pf.vf_info[i].fid = bp->pf.first_vf_id + i;
+				STAILQ_INIT(&bp->pf.vf_info[i].filter);
+			}
 		}
 	}
 
