@@ -1156,6 +1156,7 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 					memmove(&bp->pf.vf_info[i].vlan_table[j], &bp->pf.vf_info[i].vlan_table[j+1],
 					    getpagesize() - ((j+1) * sizeof(struct bnxt_vlan_table_entry)));
 					j--;
+					bp->pf.vf_info[i].vlan_count--;
 				}
 			}
 			dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, i);
