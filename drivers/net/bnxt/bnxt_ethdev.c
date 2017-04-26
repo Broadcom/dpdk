@@ -33,6 +33,7 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include <rte_dev.h>
 #include <rte_ethdev.h>
@@ -270,7 +271,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 			}
 		}
 	}
-	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0]);
+	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0], 0, NULL);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
 			"HWRM cfa l2 rx mask failure rc: %x\n", rc);
@@ -667,7 +668,7 @@ static void bnxt_promiscuous_enable_op(struct rte_eth_dev *eth_dev)
 	vnic = &bp->vnic_info[0];
 
 	vnic->flags |= BNXT_VNIC_INFO_PROMISC;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static void bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
@@ -681,7 +682,7 @@ static void bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	vnic = &bp->vnic_info[0];
 
 	vnic->flags &= ~BNXT_VNIC_INFO_PROMISC;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static void bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
@@ -695,7 +696,7 @@ static void bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
 	vnic = &bp->vnic_info[0];
 
 	vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
@@ -709,7 +710,7 @@ static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 	vnic = &bp->vnic_info[0];
 
 	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
@@ -1115,25 +1116,66 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 				uint64_t vf_mask, uint8_t vlan_on)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
-	int i;
-	int ret;
+	int i, j;
 	int rc = 0;
+	int dflt_vnic;
+	struct bnxt_vnic_info vnic;
+	struct bnxt_vlan_table_entry *ve;
 
 	if (!bp->pf.vf_info)
 		return -EINVAL;
 
 	for (i=0; vf_mask; i++, vf_mask >>= 1) {
 		if (vf_mask & 1) {
-			bp->pf.vf_info[i].dflt_vlan = vlan_on ? vlan : 0;
-			if (bnxt_hwrm_func_qcfg_current_vf_vlan(bp, i) == bp->pf.vf_info[i].dflt_vlan)
+			if (bp->pf.vf_info[i].vlan_table == NULL)
 				continue;
-			ret = bnxt_hwrm_set_vf_vlan(bp, i);
-			if (ret)
-				rc = ret;
+			if (vlan_on) {
+				/* First, search for a duplicate... */
+				for (j=0; j<bp->pf.vf_info[i].vlan_count; j++) {
+					if (bp->pf.vf_info[i].vlan_table[j].vid == vlan)
+						continue;
+				}
+				if (j < bp->pf.vf_info[i].vlan_count)
+					continue;
+
+				/* Now check that there's space */
+				if (bp->pf.vf_info[i].vlan_count == getpagesize() / sizeof(struct bnxt_vlan_table_entry)) {
+					RTE_LOG(ERR, PMD, "VF %d VLAN table is full, cannot add VLAN %u\n", i, vlan);
+					continue;
+				}
+
+				/* And finally, add to the end of the table */
+				ve = &bp->pf.vf_info[i].vlan_table[bp->pf.vf_info[i].vlan_count++];
+				ve->tpid = rte_cpu_to_be_16(0x8100);	// TODO: Hardcoded TPID
+				ve->vid = vlan;
+			}
+			else {
+				for (j=0; j<bp->pf.vf_info[i].vlan_count; j++) {
+					if (bp->pf.vf_info[i].vlan_table[j].vid != vlan)
+						continue;
+					memmove(&bp->pf.vf_info[i].vlan_table[j], &bp->pf.vf_info[i].vlan_table[j+1],
+					    getpagesize() - ((j+1) * sizeof(struct bnxt_vlan_table_entry)));
+					j--;
+				}
+			}
+			dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, i);
+			if (dflt_vnic < 0) {
+				RTE_LOG(ERR, PMD, "Unable to get default VNIC for VF %d\n", i);
+			}
+			else {
+				if (bnxt_hwrm_vnic_qcfg(bp, &vnic, dflt_vnic) == 0) {
+					bnxt_hwrm_cfa_l2_set_rx_mask(bp, &vnic, bp->pf.vf_info[i].vlan_count, bp->pf.vf_info[i].vlan_table);
+				}
+			}
 		}
 	}
 
 	return rc;
+}
+
+static int bnxt_set_rx_mask_no_vlan(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	return bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static int bnxt_set_vf_rx_mode_op(struct rte_eth_dev *dev, uint16_t vf,
@@ -1172,7 +1214,7 @@ static int bnxt_set_vf_rx_mode_op(struct rte_eth_dev *dev, uint16_t vf,
 	rc = bnxt_hwrm_func_vf_vnic_query_and_config(bp, vf,
 					vf_vnic_set_rxmask_cb,
 					&bp->pf.vf_info[vf].l2_rx_mask,
-					bnxt_hwrm_cfa_l2_set_rx_mask);
+					bnxt_set_rx_mask_no_vlan);
 	if (rc)
 		RTE_LOG(ERR, PMD, "bnxt_hwrm_func_vf_vnic_set_rxmask failed\n");
 
