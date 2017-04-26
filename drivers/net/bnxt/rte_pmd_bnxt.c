@@ -498,14 +498,12 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 		    && filter->enables == (HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR
 		        | HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK)
 		    && memcmp(addr, filter->l2_addr, ETHER_ADDR_LEN) == 0) {
-RTE_LOG(ERR, PMD, "Re-using filter...\n");
 			bnxt_hwrm_clear_filter(bp, filter);
 			break;
 		}
 	}
 
 	if (filter == NULL) {
-RTE_LOG(ERR, PMD, "New filter\n");
 		filter = bnxt_alloc_vf_filter(bp, vf_id);
 	}
 
