@@ -203,7 +203,8 @@ int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
-int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic, uint16_t vlan_count,
+    struct bnxt_vlan_table_entry *vlan_table)
 {
 	int rc = 0;
 	struct hwrm_cfa_l2_set_rx_mask_input req = {.req_type = 0 };
@@ -229,6 +230,11 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
 	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
+	if (vlan_count && vlan_table) {
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLANONLY;
+		req.vlan_tag_tbl_addr = rte_cpu_to_le_64(rte_mem_virt2phy(vlan_table));
+		req.num_vlan_tags = rte_cpu_to_le_32((uint32_t)vlan_count);
+	}
 
 	req.mask = rte_cpu_to_le_32(mask);
 
@@ -346,6 +352,13 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 			bp->pf.max_vfs = new_max_vfs;
 			for (i=0; i<new_max_vfs; i++) {
 				bp->pf.vf_info[i].fid = bp->pf.first_vf_id + i;
+				bp->pf.vf_info[i].vlan_table = rte_zmalloc("VF VLAN table", getpagesize(), getpagesize());
+				if (bp->pf.vf_info[i].vlan_table == NULL) {
+					RTE_LOG(ERR, PMD, "Unable to allcoate VF VLAN table for VF %d\n", i);
+				}
+				else {
+					rte_mem_lock_page(bp->pf.vf_info[i].vlan_table);
+				}
 				STAILQ_INIT(&bp->pf.vf_info[i].filter);
 			}
 		}

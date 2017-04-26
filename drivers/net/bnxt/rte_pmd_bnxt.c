@@ -324,6 +324,7 @@ rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct bnxt *bp;
+	int rc;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
@@ -340,10 +341,13 @@ rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
 		return -ENOTSUP;
 	}
 
-	if (vlan_id != bp->pf.vf_info[vf].dflt_vlan)
-		return -ENOTSUP;
+	bp->pf.vf_info[vf].dflt_vlan = vlan_id;
+	if (bnxt_hwrm_func_qcfg_current_vf_vlan(bp, vf) == bp->pf.vf_info[vf].dflt_vlan)
+		return 0;
 
-	return 0;
+	rc = bnxt_hwrm_set_vf_vlan(bp, vf);
+
+	return rc;
 }
 
 int rte_pmd_bnxt_get_vf_stats(uint8_t port,

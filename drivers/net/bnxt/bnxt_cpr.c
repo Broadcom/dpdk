@@ -112,6 +112,12 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 				bnxt_hwrm_func_vf_mac(bp, vf_id, (const uint8_t *)"\x00\x00\x00\x00\x00");
 			}
 		}
+		if (fwd_cmd->req_type == HWRM_CFA_L2_SET_RX_MASK) {
+			struct hwrm_cfa_l2_set_rx_mask_input *srm = (void *)fwd_cmd;
+
+			srm->vlan_tag_tbl_addr = rte_cpu_to_le_64(rte_mem_virt2phy(bp->pf.vf_info[vf_id].vlan_table));
+			srm->num_vlan_tags = rte_cpu_to_le_32((uint32_t)bp->pf.vf_info[vf_id].vlan_count);
+		}
 		/* Forward */
 		rc = bnxt_hwrm_exec_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
 		if (rc) {
