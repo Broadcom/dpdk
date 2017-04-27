@@ -1118,7 +1118,6 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	int i, j;
 	int rc = 0;
-	int ret;
 	int dflt_vnic;
 	struct bnxt_vnic_info vnic;
 	struct bnxt_vlan_table_entry *ve;
