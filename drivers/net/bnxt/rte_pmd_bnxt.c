@@ -266,11 +266,6 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	if (on == bp->pf.vf_info[vf].vlan_spoof_en)
 		return 0;
 
-	if (!bp->pf.vf_info[vf].dflt_vlan) {
-		RTE_LOG(ERR, PMD, "Default VLAN not set.\n");
-		return -ENOTSUP;
-	}
-
 	rc = bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(bp, vf);
 	if (!rc)
 		bp->pf.vf_info[vf].vlan_spoof_en = on;
