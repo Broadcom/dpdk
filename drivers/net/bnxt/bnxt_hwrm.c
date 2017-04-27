@@ -2045,31 +2045,36 @@ static void populate_vf_func_cfg_req(struct bnxt *bp, struct hwrm_func_cfg_input
 	req->num_hw_ring_grps = rte_cpu_to_le_16(bp->max_ring_grps / (num_vfs + 1));
 }
 
-static void add_random_mac_if_needed(struct bnxt *bp, struct hwrm_func_cfg_input *cfg_req, int vf)
+int bnxt_hwrm_func_qcfg_vf_default_mac(struct bnxt *bp, uint16_t vf, struct ether_addr *mac)
 {
 	struct hwrm_func_qcfg_input req = {0};
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
 	int rc;
 
-	/* Check for zero MAC address */
 	HWRM_PREP(req, FUNC_QCFG, -1, resp);
 	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
-	if (rc)
-		RTE_LOG(ERR, PMD, "hwrm_func_qcfg failed rc:%d\n", rc);
-	else if (resp->error_code) {
-		rc = rte_le_to_cpu_16(resp->error_code);
-		RTE_LOG(ERR, PMD, "hwrm_func_qcfg error %d\n", rc);
+
+	HWRM_CHECK_RESULT;
+
+	memcpy(mac->addr_bytes, resp->mac_address, ETHER_ADDR_LEN);
+	return rc;
+}
+
+static void add_random_mac_if_needed(struct bnxt *bp, struct hwrm_func_cfg_input *cfg_req, int vf)
+{
+	struct ether_addr mac;
+
+	if (bnxt_hwrm_func_qcfg_vf_default_mac(bp, vf, &mac))
+		return;
+
+	if (memcmp(mac.addr_bytes, "\x00\x00\x00\x00\x00", 6) == 0) {
+		cfg_req->enables |= rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
+		eth_random_addr(cfg_req->dflt_mac_addr);
+		bp->pf.vf_info[vf].random_mac = true;
 	}
 	else {
-		if (memcmp(resp->mac_address, "\x00\x00\x00\x00\x00", 6) == 0) {
-			cfg_req->enables |= rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
-			eth_random_addr(cfg_req->dflt_mac_addr);
-			bp->pf.vf_info[vf].random_mac = true;
-		}
-		else {
-			memcpy(cfg_req->dflt_mac_addr, resp->mac_address, sizeof(resp->mac_address));
-		}
+		memcpy(cfg_req->dflt_mac_addr, mac.addr_bytes, ETHER_ADDR_LEN);
 	}
 }
 

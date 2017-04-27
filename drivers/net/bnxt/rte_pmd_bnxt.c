@@ -463,6 +463,7 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 	struct bnxt *bp;
 	struct bnxt_filter_info *filter;
 	struct bnxt_vnic_info vnic;
+	struct ether_addr dflt_mac;
 	int rc;
 
 	dev = &rte_eth_devices[port];
@@ -517,7 +518,11 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
 	memcpy(filter->l2_addr, addr, ETHER_ADDR_LEN);
 	memset(filter->l2_addr_mask, 0xff, ETHER_ADDR_LEN);
-	rc = bnxt_hwrm_set_filter(bp, vnic.fw_vnic_id, filter);
+
+	/* Do not add a filter for the default MAC */
+	if (bnxt_hwrm_func_qcfg_vf_default_mac(bp, vf_id, &dflt_mac) ||
+	    memcmp(filter->l2_addr, dflt_mac.addr_bytes, ETHER_ADDR_LEN))
+		rc = bnxt_hwrm_set_filter(bp, vnic.fw_vnic_id, filter);
 
 exit:
 	return rc;
