@@ -52,6 +52,7 @@
 #include "bnxt_txq.h"
 #include "bnxt_txr.h"
 #include "bnxt_vnic.h"
+#include "rte_pmd_bnxt.h"
 #include "hsi_struct_def_dpdk.h"
 
 #define DRV_MODULE_NAME		"bnxt"
@@ -1134,27 +1135,26 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 			if (vlan_on) {
 				/* First, search for a duplicate... */
 				for (j=0; j<bp->pf.vf_info[i].vlan_count; j++) {
-					if (bp->pf.vf_info[i].vlan_table[j].vid == vlan)
+					if (rte_be_to_cpu_16(bp->pf.vf_info[i].vlan_table[j].vid) == vlan)
+						break;
+				}
+				if (j == bp->pf.vf_info[i].vlan_count) {
+					/* Now check that there's space */
+					if (bp->pf.vf_info[i].vlan_count == getpagesize() / sizeof(struct bnxt_vlan_table_entry)) {
+						RTE_LOG(ERR, PMD, "VF %d VLAN table is full, cannot add VLAN %u\n", i, vlan);
+						rc = -1;
 						continue;
-				}
-				if (j < bp->pf.vf_info[i].vlan_count)
-					continue;
+					}
 
-				/* Now check that there's space */
-				if (bp->pf.vf_info[i].vlan_count == getpagesize() / sizeof(struct bnxt_vlan_table_entry)) {
-					RTE_LOG(ERR, PMD, "VF %d VLAN table is full, cannot add VLAN %u\n", i, vlan);
-					rc = -1;
-					continue;
+					/* And finally, add to the end of the table */
+					ve = &bp->pf.vf_info[i].vlan_table[bp->pf.vf_info[i].vlan_count++];
+					ve->tpid = rte_cpu_to_be_16(0x8100);	// TODO: Hardcoded TPID
+					ve->vid = rte_cpu_to_be_16(vlan);
 				}
-
-				/* And finally, add to the end of the table */
-				ve = &bp->pf.vf_info[i].vlan_table[bp->pf.vf_info[i].vlan_count++];
-				ve->tpid = rte_cpu_to_be_16(0x8100);	// TODO: Hardcoded TPID
-				ve->vid = vlan;
 			}
 			else {
 				for (j=0; j<bp->pf.vf_info[i].vlan_count; j++) {
-					if (bp->pf.vf_info[i].vlan_table[j].vid != vlan)
+					if (rte_be_to_cpu_16(bp->pf.vf_info[i].vlan_table[j].vid) != vlan)
 						continue;
 					memmove(&bp->pf.vf_info[i].vlan_table[j], &bp->pf.vf_info[i].vlan_table[j+1],
 					    getpagesize() - ((j+1) * sizeof(struct bnxt_vlan_table_entry)));
@@ -1172,6 +1172,10 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 					if (bnxt_hwrm_cfa_l2_set_rx_mask(bp, &vnic, bp->pf.vf_info[i].vlan_count, bp->pf.vf_info[i].vlan_table))
 						rc = -1;
 				}
+			}
+
+			if (bp->pf.vf_info[i].vlan_spoof_en) {
+				rte_pmd_bnxt_set_vf_vlan_anti_spoof(dev->data->port_id, i, bp->pf.vf_info[i].vlan_spoof_en);
 			}
 		}
 	}
