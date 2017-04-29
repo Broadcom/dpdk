@@ -227,9 +227,8 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	bp->pf.vf_info[vf].func_cfg_flags = func_flags;
 
 	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf);
-	if (!rc) {
+	if (!rc)
 		bp->pf.vf_info[vf].mac_spoof_en = on;
-	}
 
 	return rc;
 }
@@ -240,6 +239,8 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	struct rte_eth_dev *dev;
 	struct bnxt *bp;
 	int rc;
+	int dflt_vnic;
+	struct bnxt_vnic_info vnic;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
@@ -262,13 +263,24 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	if (on > 1)
 		return -EINVAL;
 
-	/* Prev setting same as new setting. */
-	if (on == bp->pf.vf_info[vf].vlan_spoof_en)
-		return 0;
-
-	rc = bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(bp, vf);
-	if (!rc)
+	rc = bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(bp, vf, on);
+	if (!rc) {
 		bp->pf.vf_info[vf].vlan_spoof_en = on;
+		if (on) {
+			dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf);
+			if (dflt_vnic < 0) {
+				// This simply indicates there's no driver loaded.  This is not an error.
+				RTE_LOG(ERR, PMD, "Unable to get default VNIC for VF %d\n", vf);
+			}
+			else {
+				vnic.fw_vnic_id = dflt_vnic;
+				if (bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf) == 0) {
+					if (bnxt_hwrm_cfa_l2_set_rx_mask(bp, &vnic, bp->pf.vf_info[vf].vlan_count, bp->pf.vf_info[vf].vlan_table))
+						rc = -1;
+				}
+			}
+		}
+	}
 	else
 		RTE_LOG(ERR, PMD, "Failed to update VF VNIC %d.\n", vf);
 
