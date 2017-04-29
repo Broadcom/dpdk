@@ -2529,7 +2529,7 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	return rc;
 }
 
-int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf)
+int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf, bool on)
 {
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	struct hwrm_func_cfg_input req = {0};
@@ -2539,8 +2539,9 @@ int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf)
 	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
 	req.enables |= rte_cpu_to_le_32(
 			HWRM_FUNC_CFG_INPUT_ENABLES_VLAN_ANTISPOOF_MODE);
-	req.vlan_antispoof_mode =
-		HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_VALIDATE_VLAN;
+	req.vlan_antispoof_mode = on ?
+		HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_VALIDATE_VLAN :
+		HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_NOCHECK;
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
 
