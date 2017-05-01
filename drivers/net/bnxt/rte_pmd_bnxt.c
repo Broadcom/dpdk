@@ -208,9 +208,6 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
 
-	if (on > 1)	
-		return -EINVAL;
-
 	/* Prev setting same as new setting. */
 	if (on == bp->pf.vf_info[vf].mac_spoof_en)
 		return 0;
@@ -258,9 +255,6 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	}
 
 	if (vf >= dev_info.max_vfs)
-		return -EINVAL;
-
-	if (on > 1)
 		return -EINVAL;
 
 	rc = bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(bp, vf, on);
