@@ -108,9 +108,6 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 	if (bp->vnic_info == NULL)
 		return -ENODEV;
 
-	RTE_LOG(ERR, PMD, "rte_pmd_bnxt_set_all_queues_drop_en() non-functional\n");
-	return -1;
-
 	/* Stall PF */
 	for (i = 0; i < bp->nr_vnics; i++) {
 		bp->vnic_info[i].bd_stall = !on;
@@ -310,9 +307,6 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 				vf, port);
 		return -ENOTSUP;
 	}
-
-	RTE_LOG(ERR, PMD, "rte_pmd_bnxt_set_vf_vlan_stripq() non-functional\n");
-	return -1;
 
 	rc = bnxt_hwrm_func_vf_vnic_query_and_config(bp, vf,
 				rte_pmd_bnxt_set_vf_vlan_stripq_cb, &on,
