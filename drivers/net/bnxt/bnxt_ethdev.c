@@ -61,6 +61,7 @@ static const char bnxt_version[] =
 
 #define PCI_VENDOR_ID_BROADCOM 0x14E4
 
+#define BROADCOM_DEV_ID_57414_VF 0x16c1
 #define BROADCOM_DEV_ID_57301 0x16c8
 #define BROADCOM_DEV_ID_57302 0x16c9
 #define BROADCOM_DEV_ID_57304_PF 0x16ca
@@ -1257,7 +1258,8 @@ static bool bnxt_vf_pciid(uint16_t id)
 	if (id == BROADCOM_DEV_ID_57304_VF ||
 	    id == BROADCOM_DEV_ID_57406_VF ||
 	    id == BROADCOM_DEV_ID_5731X_VF ||
-	    id == BROADCOM_DEV_ID_5741X_VF)
+	    id == BROADCOM_DEV_ID_5741X_VF ||
+	    id == BROADCOM_DEV_ID_57414_VF)
 		return true;
 	return false;
 }

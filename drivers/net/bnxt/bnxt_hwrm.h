@@ -135,5 +135,6 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	int (*hwrm_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic));
 int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf, bool on);
 int bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(struct bnxt *bp, int vf);
+int bnxt_hwrm_vf_func_cfg_def_cp(struct bnxt *bp);
 
 #endif

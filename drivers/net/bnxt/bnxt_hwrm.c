@@ -2358,6 +2358,23 @@ int bnxt_hwrm_func_cfg_def_cp(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_vf_func_cfg_def_cp(struct bnxt *bp)
+{
+	struct hwrm_func_vf_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_vf_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_VF_CFG, -1, resp);
+	req.enables = rte_cpu_to_le_32(
+			HWRM_FUNC_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);
+	req.async_event_cr = rte_cpu_to_le_16(
+			bp->def_cp_ring->cp_ring_struct->fw_ring_id);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
 			uint16_t max_bw, uint16_t enables)
 {
