@@ -61,6 +61,7 @@ static const char bnxt_version[] =
 
 #define PCI_VENDOR_ID_BROADCOM 0x14E4
 
+#define BROADCOM_DEV_ID_57414_VF 0x16c1
 #define BROADCOM_DEV_ID_57301 0x16c8
 #define BROADCOM_DEV_ID_57302 0x16c9
 #define BROADCOM_DEV_ID_57304_PF 0x16ca
