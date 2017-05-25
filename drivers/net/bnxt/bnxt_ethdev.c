@@ -1257,7 +1257,8 @@ static bool bnxt_vf_pciid(uint16_t id)
 	if (id == BROADCOM_DEV_ID_57304_VF ||
 	    id == BROADCOM_DEV_ID_57406_VF ||
 	    id == BROADCOM_DEV_ID_5731X_VF ||
-	    id == BROADCOM_DEV_ID_5741X_VF)
+	    id == BROADCOM_DEV_ID_5741X_VF ||
+	    id == BROADCOM_DEV_ID_57414_VF)
 		return true;
 	return false;
 }
