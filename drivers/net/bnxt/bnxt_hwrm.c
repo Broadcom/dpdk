@@ -2437,8 +2437,7 @@ static void bnxt_vnic_count(struct bnxt_vnic_info *vnic, void *cbdata)
 {
 	uint32_t *count = cbdata;
 
-	if (vnic->func_default)
-		*count = *count + 1;
+	*count = *count + 1;
 }
 
 static int bnxt_vnic_count_hwrm_stub(struct bnxt *bp __rte_unused, struct bnxt_vnic_info *vnic __rte_unused)
@@ -2446,7 +2445,7 @@ static int bnxt_vnic_count_hwrm_stub(struct bnxt *bp __rte_unused, struct bnxt_v
 	return 0;
 }
 
-int bnxt_vf_default_vnic_count(struct bnxt *bp, uint16_t vf)
+int bnxt_vf_vnic_count(struct bnxt *bp, uint16_t vf)
 {
 	uint32_t count=0;
 
