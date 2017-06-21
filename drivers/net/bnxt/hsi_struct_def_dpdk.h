@@ -2582,6 +2582,15 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE	\
 		UINT32_C(0x400)
+	/*
+	 * This bit only applies to the VF. If this bit is set, the
+	 * statistic context counters will not be cleared when the
+	 * statistic context is freed or a function reset is called on
+	 * VF. This bit will be cleared when the PF is unloaded or a
+	 * function reset is called on the PF.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_FLAGS_NO_AUTOCLEAR_STATISTIC	\
+		UINT32_C(0x1000)
 	uint32_t enables;
 	/* This bit must be '1' for the mtu field to be configured. */
 	#define HWRM_FUNC_CFG_INPUT_ENABLES_MTU	UINT32_C(0x1)
