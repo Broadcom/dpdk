@@ -220,7 +220,7 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 
 	bp->pf.vf_info[vf].func_cfg_flags = func_flags;
 
-	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf);
+	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf, func_flags);
 	if (!rc)
 		bp->pf.vf_info[vf].mac_spoof_en = on;
 
@@ -266,7 +266,7 @@ int rte_pmd_bnxt_set_vf_persist_stats(uint8_t port, uint16_t vf, uint8_t on)
 		func_flags &= 
 			~HWRM_FUNC_CFG_INPUT_FLAGS_NO_AUTOCLEAR_STATISTIC;
 
-	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf);
+	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf, func_flags);
 	if (!rc) {
 		bp->pf.vf_info[vf].persist_stats = on;
 		bp->pf.vf_info[vf].func_cfg_flags = func_flags;

@@ -127,7 +127,7 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type);
 void bnxt_free_tunnel_ports(struct bnxt *bp);
-int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf);
+int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf, uint32_t flags);
 void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp);
 int bnxt_vf_vnic_count(struct bnxt *bp, uint16_t vf);
 int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
