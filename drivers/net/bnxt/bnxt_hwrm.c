@@ -2433,7 +2433,7 @@ void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp)
 	vnic->flags = *flag;
 }
 
-static void bnxt_vnic_count(struct bnxt_vnic_info *vnic, void *cbdata)
+static void bnxt_vnic_count(struct bnxt_vnic_info *vnic __rte_unused, void *cbdata)
 {
 	uint32_t *count = cbdata;
 
