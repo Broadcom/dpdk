@@ -2534,7 +2534,7 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf);
 		if (rc)
 			break;
-		if (vnic.mru == 4)	// Unallocated
+		if (vnic.mru <= 4)	// Unallocated
 			continue;
 
 		vnic_cb(&vnic, cbdata);
