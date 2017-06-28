@@ -45,8 +45,6 @@
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 
-static int bnxt_rx_default_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic);
-
 /*
  * RX Queues
  */
@@ -63,22 +61,13 @@ static int bnxt_rx_default_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	struct bnxt_filter_info *filter;
 
-	/* Now the promiscuous filter */
-	filter = bnxt_alloc_filter(bp);
-	if (!filter) {
-		RTE_LOG(ERR, PMD, "L2 Promiscuous filter alloc failed\n");
-		return -ENOMEM;
-	}
-	memset(filter->l2_addr, 0, sizeof(filter->l2_addr));
-	memcpy(filter->l2_addr_mask, "\x01\x00\x00\x00\x00", sizeof(filter->l2_addr_mask));
-	filter->mac_index = PROMISC_MAC_INDEX;
-	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 	/* Finally the MAC filter */
 	filter = bnxt_alloc_filter(bp);
 	if (!filter) {
 		RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
 		return -ENOMEM;
 	}
+	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 
 	return 0;
 }
