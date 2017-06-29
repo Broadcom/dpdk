@@ -1115,6 +1115,37 @@ static int bnxt_set_vf_rate_limit(struct rte_eth_dev *eth_dev, uint16_t vf,
 	return rc;
 }
 
+static int bnxt_set_vf_table(struct bnxt *bp, uint16_t vf)
+{
+	int rc;
+	int dflt_vnic;
+	struct bnxt_vnic_info vnic;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"Attempt to set VLAN table on non-PF port!\n");
+		return -EINVAL;
+	}
+
+	if (vf >= bp->pdev->max_vfs)
+		return -EINVAL;
+
+	dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf);
+	if (dflt_vnic < 0) {
+		// This simply indicates there's no driver loaded.  This is not an error.
+		RTE_LOG(ERR, PMD, "Unable to get default VNIC for VF %d\n", vf);
+	}
+	else {
+		vnic.fw_vnic_id = dflt_vnic;
+		if (bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf) == 0) {
+			if (bnxt_hwrm_cfa_l2_set_rx_mask(bp, &vnic, bp->pf.vf_info[vf].vlan_count, bp->pf.vf_info[vf].vlan_table))
+				rc = -1;
+		}
+	}
+
+	return rc;
+}
+
 static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 				uint64_t vf_mask, uint8_t vlan_on)
 {
@@ -1122,6 +1153,7 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 	int i, j;
 	int rc = 0;
 	struct bnxt_vlan_table_entry *ve;
+	struct bnxt_vlan_antispoof_table_entry *vase;
 
 	if (!bp->pf.vf_info)
 		return -EINVAL;
@@ -1129,6 +1161,10 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 	for (i=0; vf_mask; i++, vf_mask >>= 1) {
 		if (vf_mask & 1) {
 			if (bp->pf.vf_info[i].vlan_table == NULL) {
+				rc = -1;
+				continue;
+			}
+			if (bp->pf.vf_info[i].vlan_as_table == NULL) {
 				rc = -1;
 				continue;
 			}
@@ -1140,13 +1176,17 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 				}
 				if (j == bp->pf.vf_info[i].vlan_count) {
 					/* Now check that there's space */
-					if (bp->pf.vf_info[i].vlan_count == getpagesize() / sizeof(struct bnxt_vlan_table_entry)) {
-						RTE_LOG(ERR, PMD, "VF %d VLAN table is full, cannot add VLAN %u\n", i, vlan);
+					if (bp->pf.vf_info[i].vlan_count == getpagesize() / sizeof(struct bnxt_vlan_antispoof_table_entry)) {
+						RTE_LOG(ERR, PMD, "VF %d VLAN anti-spoof table is full, cannot add VLAN %u\n", i, vlan);
 						rc = -1;
 						continue;
 					}
 
 					/* And finally, add to the end of the table */
+					vase = &bp->pf.vf_info[i].vlan_as_table[bp->pf.vf_info[i].vlan_count];
+					vase->tpid = rte_cpu_to_be_16(0x8100);	// TODO: Hardcoded TPID
+					vase->vid = rte_cpu_to_be_16(vlan);
+					vase->mask = rte_cpu_to_be_16(0xfff);
 					ve = &bp->pf.vf_info[i].vlan_table[bp->pf.vf_info[i].vlan_count++];
 					ve->tpid = rte_cpu_to_be_16(0x8100);	// TODO: Hardcoded TPID
 					ve->vid = rte_cpu_to_be_16(vlan);
@@ -1158,11 +1198,13 @@ static int bnxt_set_vf_vlan_filter_op(struct rte_eth_dev *dev, uint16_t vlan,
 						continue;
 					memmove(&bp->pf.vf_info[i].vlan_table[j], &bp->pf.vf_info[i].vlan_table[j+1],
 					    getpagesize() - ((j+1) * sizeof(struct bnxt_vlan_table_entry)));
+					memmove(&bp->pf.vf_info[i].vlan_as_table[j], &bp->pf.vf_info[i].vlan_as_table[j+1],
+					    getpagesize() - ((j+1) * sizeof(struct bnxt_vlan_antispoof_table_entry)));
 					j--;
 					bp->pf.vf_info[i].vlan_count--;
 				}
 			}
-			rte_pmd_bnxt_set_vf_vlan_anti_spoof(dev->data->port_id, i, bp->pf.vf_info[i].vlan_spoof_en);
+			bnxt_set_vf_table(bp, i);
 		}
 	}
 

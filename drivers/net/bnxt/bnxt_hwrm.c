@@ -242,6 +242,33 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic, u
 	return rc;
 }
 
+int bnxt_hwrm_cfa_vlan_antispoof_cfg(struct bnxt *bp, uint16_t fid, uint16_t vlan_count,
+    struct bnxt_vlan_antispoof_table_entry *vlan_table)
+{
+	int rc = 0;
+	struct hwrm_cfa_vlan_antispoof_cfg_input req = {.req_type = 0 };
+	struct hwrm_cfa_vlan_antispoof_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	/*
+	 * Older HWRM versions did not support this command, and the set_rx_mask
+	 * list was used for anti-spoof.  In 1.8.0, the TX path configuration was
+	 * removed from set_rx_mask call, and this command was added.
+	 */
+	if (bp->hwrm_intf_ver < ((1<<24) | (8<<16)))
+		return 0;
+	HWRM_PREP(req, CFA_VLAN_ANTISPOOF_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(fid);
+
+	req.vlan_tag_mask_tbl_addr = rte_cpu_to_le_64(rte_mem_virt2phy(vlan_table));
+	req.num_vlan_entries = rte_cpu_to_le_32((uint32_t)vlan_count);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_clear_filter(struct bnxt *bp,
 			   struct bnxt_filter_info *filter)
 {
@@ -351,6 +378,13 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 				else {
 					rte_mem_lock_page(bp->pf.vf_info[i].vlan_table);
 				}
+				bp->pf.vf_info[i].vlan_as_table = rte_zmalloc("VF VLAN AS table", getpagesize(), getpagesize());
+				if (bp->pf.vf_info[i].vlan_as_table == NULL) {
+					RTE_LOG(ERR, PMD, "Unable to allcoate VF VLAN anti-spoof table for VF %d\n", i);
+				}
+				else {
+					rte_mem_lock_page(bp->pf.vf_info[i].vlan_as_table);
+				}
 				STAILQ_INIT(&bp->pf.vf_info[i].filter);
 			}
 		}
@@ -436,7 +470,6 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	struct hwrm_ver_get_input req = {.req_type = 0 };
 	struct hwrm_ver_get_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t my_version;
-	uint32_t fw_version;
 	uint16_t max_resp_len;
 	char type[RTE_MEMZONE_NAMESIZE];
 
@@ -466,9 +499,10 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	my_version |= HWRM_VERSION_MINOR << 8;
 	my_version |= HWRM_VERSION_UPDATE;
 
-	fw_version = resp->hwrm_intf_maj << 16;
-	fw_version |= resp->hwrm_intf_min << 8;
-	fw_version |= resp->hwrm_intf_upd;
+	bp->hwrm_intf_ver = resp->hwrm_intf_maj << 26;
+	bp->hwrm_intf_ver |= resp->hwrm_intf_min << 16;
+	bp->hwrm_intf_ver |= resp->hwrm_intf_upd << 8;
+	bp->hwrm_intf_ver |= resp->hwrm_intf_rsvd;
 
 	if (resp->hwrm_intf_maj != HWRM_VERSION_MAJOR) {
 		RTE_LOG(ERR, PMD, "Unsupported firmware API version\n");
@@ -476,9 +510,9 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 		goto error;
 	}
 
-	if (my_version != fw_version) {
+	if (my_version != bp->hwrm_intf_ver) {
 		RTE_LOG(INFO, PMD, "BNXT Driver/HWRM API mismatch.\n");
-		if (my_version < fw_version) {
+		if (my_version < bp->hwrm_intf_ver) {
 			RTE_LOG(INFO, PMD,
 				"Firmware API version is newer than driver.\n");
 			RTE_LOG(INFO, PMD,

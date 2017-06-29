@@ -59,9 +59,16 @@ struct bnxt_vlan_table_entry {
 	uint16_t		vid;
 } __attribute__((packed));
 
+struct bnxt_vlan_antispoof_table_entry {
+	uint16_t		tpid;
+	uint16_t		vid;
+	uint16_t		mask;
+} __attribute__((packed));
+
 struct bnxt_child_vf_info {
 	void			*req_buf;
 	struct bnxt_vlan_table_entry	*vlan_table;
+	struct bnxt_vlan_antispoof_table_entry	*vlan_as_table;
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
 	uint32_t		func_cfg_flags;
 	uint32_t		l2_rx_mask;
@@ -177,6 +184,7 @@ struct bnxt {
 	rte_spinlock_t			hwrm_lock;
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;
+	uint32_t			hwrm_intf_ver;
 
 	struct bnxt_link_info	link_info;
 	struct bnxt_cos_queue_info	cos_queue[BNXT_COS_QUEUE_COUNT];
