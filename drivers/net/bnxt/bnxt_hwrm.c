@@ -253,9 +253,15 @@ int bnxt_hwrm_cfa_vlan_antispoof_cfg(struct bnxt *bp, uint16_t fid, uint16_t vla
 	 * Older HWRM versions did not support this command, and the set_rx_mask
 	 * list was used for anti-spoof.  In 1.8.0, the TX path configuration was
 	 * removed from set_rx_mask call, and this command was added.
+	 *
+	 * This command is also present from 1.7.8.11 and higher, as well as 1.7.8.0
 	 */
-	if (bp->hwrm_intf_ver < ((1<<24) | (8<<16)))
-		return 0;
+	if (bp->hwrm_intf_ver < ((1<<24) | (8<<16))) {
+		if (bp->hwrm_intf_ver != ((1<<24) | (7<<16) | (8<<8))) {
+			if (bp->hwrm_intf_ver < ((1<<24) | (7<<16) | (8<<8) | (11)))
+				return 0;
+		}
+	}
 	HWRM_PREP(req, CFA_VLAN_ANTISPOOF_CFG, -1, resp);
 	req.fid = rte_cpu_to_le_16(fid);
 
@@ -499,7 +505,7 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	my_version |= HWRM_VERSION_MINOR << 8;
 	my_version |= HWRM_VERSION_UPDATE;
 
-	bp->hwrm_intf_ver = resp->hwrm_intf_maj << 26;
+	bp->hwrm_intf_ver = resp->hwrm_intf_maj << 24;
 	bp->hwrm_intf_ver |= resp->hwrm_intf_min << 16;
 	bp->hwrm_intf_ver |= resp->hwrm_intf_upd << 8;
 	bp->hwrm_intf_ver |= resp->hwrm_intf_rsvd;
