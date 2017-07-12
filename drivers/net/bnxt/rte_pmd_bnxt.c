@@ -283,8 +283,6 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	struct rte_eth_dev *dev;
 	struct bnxt *bp;
 	int rc;
-	int dflt_vnic;
-	struct bnxt_vnic_info vnic;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
@@ -308,17 +306,8 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	if (!rc) {
 		bp->pf.vf_info[vf].vlan_spoof_en = on;
 		if (on) {
-			dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf);
-			if (dflt_vnic < 0) {
-				// This simply indicates there's no driver loaded.  This is not an error.
-				RTE_LOG(ERR, PMD, "Unable to get default VNIC for VF %d\n", vf);
-			}
-			else {
-				vnic.fw_vnic_id = dflt_vnic;
-				if (bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf) == 0) {
-					if (bnxt_hwrm_cfa_l2_set_rx_mask(bp, &vnic, bp->pf.vf_info[vf].vlan_count, bp->pf.vf_info[vf].vlan_table))
-						rc = -1;
-				}
+			if (bnxt_hwrm_cfa_vlan_antispoof_cfg(bp, bp->pf.first_vf_id + vf, bp->pf.vf_info[vf].vlan_count, bp->pf.vf_info[vf].vlan_as_table)) {
+				rc = -1;
 			}
 		}
 	}
