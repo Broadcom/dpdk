@@ -2286,6 +2286,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 
 	bp->pf.active_vfs = 0;
 	for (i = 0; i < num_vfs; i++) {
+		bnxt_hwrm_func_clr_stats(bp, bp->pf.vf_info[i].fid);
+
 		add_random_mac_if_needed(bp, &req, i);
 
 		HWRM_PREP(req, FUNC_CFG, -1, resp);
