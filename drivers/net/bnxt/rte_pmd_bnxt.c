@@ -457,6 +457,7 @@ static int bnxt_set_vf_table(struct bnxt *bp, uint16_t vf)
 		 */
 		RTE_LOG(ERR, PMD, "Unable to get default VNIC for VF %d\n", vf);
 	} else {
+		memset(&vnic, 0, sizeof(vnic));
 		vnic.fw_vnic_id = dflt_vnic;
 		if (bnxt_hwrm_vnic_qcfg(bp, &vnic,
 					bp->pf.first_vf_id + vf) == 0) {
