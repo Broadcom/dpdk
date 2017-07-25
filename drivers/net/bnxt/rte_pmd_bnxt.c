@@ -57,7 +57,7 @@ int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg)
 	cb_param.msg = msg;
 
 	_rte_eth_dev_callback_process(bp->eth_dev, RTE_ETH_EVENT_VF_MBOX,
-			&cb_param, NULL);
+				      NULL, &cb_param);
 
 	/* Default to approve */
 	if (cb_param.retval == RTE_PMD_BNXT_MB_EVENT_PROCEED)
