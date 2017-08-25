@@ -827,7 +827,7 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	 */
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		if (!rss_conf->rss_hf)
-			return -EINVAL;
+			RTE_LOG(ERR, PMD, "Hash type NONE\n");
 	} else {
 		if (rss_conf->rss_hf & BNXT_ETH_RSS_SUPPORT)
 			return -EINVAL;
