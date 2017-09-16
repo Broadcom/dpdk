@@ -195,6 +195,7 @@ struct rte_port {
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	uint8_t                 slave_flag; /**< bonding slave port */
 	struct port_flow        *flow_list; /**< Associated flows. */
+	uint16_t                broadcom;/** Broadcom custom VXLAN test mode */
 };
 
 /**
