@@ -52,6 +52,17 @@ New Features
   NFP 4000 devices are also now supported along with previous 6000 devices.
 
 
+Drivers
+~~~~~~~
+
+* **Updated bnxt PMD.**
+
+  Major enhancements include:
+
+   * Support for Flow API
+   * Support for Tx and Rx descriptor status functions
+
+
 Resolved Issues
 ---------------
 
