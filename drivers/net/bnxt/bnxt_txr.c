@@ -270,6 +270,8 @@ static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
 
 		for (j = 1; j < tx_buf->nr_bds; j++)
 			cons = RING_NEXT(txr->tx_ring_struct, cons);
+
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 		rte_pktmbuf_free(mbuf);
 	}
 
