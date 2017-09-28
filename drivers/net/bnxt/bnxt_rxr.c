@@ -130,6 +130,7 @@ static uint16_t bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 	mbuf->nb_segs = 1;
 	mbuf->next = NULL;
+	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 	mbuf->pkt_len = rxcmp->len;
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
