@@ -324,6 +324,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		dev_info->reta_size = bp->vf.max_rsscos_ctx;
 		max_vnics = bp->vf.max_vnics;
 	}
+	dev_info->hash_key_size = 40;
 
 	/* Fast path specifics */
 	dev_info->min_rx_bufsize = 1;
@@ -786,11 +787,15 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	 */
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		if (!rss_conf->rss_hf)
-			return -EINVAL;
+			RTE_LOG(ERR, PMD, "Hash type NONE\n");
 	} else {
 		if (rss_conf->rss_hf & BNXT_ETH_RSS_SUPPORT)
 			return -EINVAL;
 	}
+
+	bp->flags |= BNXT_FLAG_UPDATE_HASH;
+	memcpy(&bp->rss_conf, rss_conf, sizeof(*rss_conf));
+
 	if (rss_conf->rss_hf & ETH_RSS_IPV4)
 		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
 	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)

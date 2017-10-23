@@ -199,12 +199,45 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	}
 	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		vnic->hash_type =
-			HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4 |
-			HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
-
 out:
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+		struct rte_eth_rss_conf *rss = &dev_conf->rx_adv_conf.rss_conf;
+		uint16_t hash_type = 0;
+
+		if (bp->flags & BNXT_FLAG_UPDATE_HASH) {
+			rss = &bp->rss_conf;
+			bp->flags &= ~BNXT_FLAG_UPDATE_HASH;
+		}
+
+		if (rss->rss_hf & ETH_RSS_IPV4)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
+		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
+		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
+		if (rss->rss_hf & ETH_RSS_IPV6)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
+		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
+
+		for (i = 0; i < bp->nr_vnics; i++) {
+			STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
+			vnic->hash_type |= hash_type;
+
+			/*
+			 * Use the supplied key if the key length is
+			 * acceptable and the rss_key is not NULL
+			 */
+			if (rss->rss_key &&
+			    rss->rss_key_len <= HW_HASH_KEY_SIZE)
+				memcpy(vnic->rss_hash_key,
+				       rss->rss_key, rss->rss_key_len);
+			}
+		}
+	}
+
 	return rc;
 
 err_out:

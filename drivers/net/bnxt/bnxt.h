@@ -124,11 +124,13 @@ struct bnxt {
 	void				*bar0;
 
 	struct rte_eth_dev		*eth_dev;
+	struct rte_eth_rss_conf		rss_conf;
 	struct rte_pci_device		*pdev;
 
 	uint32_t		flags;
 #define BNXT_FLAG_REGISTERED	(1 << 0)
 #define BNXT_FLAG_VF		(1 << 1)
+#define BNXT_FLAG_UPDATE_HASH	(1 << 5)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
