@@ -177,6 +177,7 @@ struct rte_port {
 	struct ether_addr       *mc_addr_pool; /**< pool of multicast addrs */
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	uint8_t                 slave_flag; /**< bonding slave port */
+	uint16_t                broadcom;/** Broadcom custom VXLAN test mode */
 };
 
 extern portid_t __rte_unused

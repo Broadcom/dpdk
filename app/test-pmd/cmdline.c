@@ -3338,8 +3338,14 @@ csum_show(int port_id)
 {
 	struct rte_eth_dev_info dev_info;
 	uint16_t ol_flags;
+	uint16_t broadcom;
 
 	ol_flags = ports[port_id].tx_ol_flags;
+	broadcom = ports[port_id].broadcom;
+	if (broadcom == 1) {
+		printf("Inner IP, Outer IP, Inner UDP CKSUM is Offloaded\n");
+		return;
+	}
 	printf("Parse tunnel is %s\n",
 		(ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) ? "on" : "off");
 	printf("IP checksum offload is %s\n",
@@ -3389,6 +3395,7 @@ cmd_csum_parsed(void *parsed_result,
 {
 	struct cmd_csum_result *res = parsed_result;
 	int hw = 0;
+	int rx = 0;
 	uint16_t mask = 0;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN)) {
@@ -3400,6 +3407,8 @@ cmd_csum_parsed(void *parsed_result,
 
 		if (!strcmp(res->hwsw, "hw"))
 			hw = 1;
+		if (!strcmp(res->hwsw, "rx"))
+			rx = 1;
 
 		if (!strcmp(res->proto, "ip")) {
 			mask = TESTPMD_TX_OFFLOAD_IP_CKSUM;
@@ -3411,6 +3420,19 @@ cmd_csum_parsed(void *parsed_result,
 			mask = TESTPMD_TX_OFFLOAD_SCTP_CKSUM;
 		} else if (!strcmp(res->proto, "outer-ip")) {
 			mask = TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM;
+		} else if (!strcmp(res->proto, "broadcom")) {
+			if (!hw) {
+				ports[res->port_id].broadcom = 0;
+				printf("Enabled Broadcom SW Tx checksum mode\n");
+			}
+			if (hw) {
+				ports[res->port_id].broadcom = 1;
+				printf("Enabled Broadcom HW mode\n");
+			}
+			if (rx) {
+				ports[res->port_id].broadcom = 2;
+				printf("Enabled Broadcom SW checksum for Rx & Tx\n");
+			}
 		}
 
 		if (hw)
@@ -3429,10 +3451,10 @@ cmdline_parse_token_string_t cmd_csum_mode =
 				mode, "set");
 cmdline_parse_token_string_t cmd_csum_proto =
 	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
-				proto, "ip#tcp#udp#sctp#outer-ip");
+				proto, "ip#tcp#udp#sctp#outer-ip#broadcom");
 cmdline_parse_token_string_t cmd_csum_hwsw =
 	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
-				hwsw, "hw#sw");
+				hwsw, "hw#sw#rx");
 cmdline_parse_token_num_t cmd_csum_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_csum_result,
 				port_id, UINT8);
@@ -3441,7 +3463,7 @@ cmdline_parse_inst_t cmd_csum_set = {
 	.f = cmd_csum_parsed,
 	.data = NULL,
 	.help_str = "enable/disable hardware calculation of L3/L4 checksum when "
-		"using csum forward engine: csum set ip|tcp|udp|sctp|outer-ip hw|sw <port>",
+		"using csum forward engine: csum set ip|tcp|udp|sctp|outer-ip|broadcom hw|sw|rx <port>",
 	.tokens = {
 		(void *)&cmd_csum_csum,
 		(void *)&cmd_csum_mode,
