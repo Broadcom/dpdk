@@ -112,6 +112,8 @@ static struct rte_pci_id bnxt_pci_id_map[] = {
 
 /***********************/
 
+void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
+
 /*
  * High level utility functions
  */
@@ -263,6 +265,9 @@ static int bnxt_init_chip(struct bnxt *bp)
 			RTE_LOG(ERR, PMD,
 				"HWRM link config failure rc: %x\n", rc);
 			goto err_out;
+		} else {
+			bnxt_get_hwrm_link_config(bp, &new);
+			bnxt_print_link_info(bp->eth_dev);
 		}
 	}
 
@@ -433,7 +438,7 @@ rte_bnxt_atomic_write_link_status(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
+void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_link *link = &eth_dev->data->dev_link;
 
