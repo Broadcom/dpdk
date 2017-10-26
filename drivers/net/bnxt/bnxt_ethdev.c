@@ -486,6 +486,10 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	int rc;
 
+	/* Set IPV4 + UDP RSS Hash by default */
+	bp->flags |= BNXT_FLAG_UPDATE_HASH;
+	bp->rss_conf.rss_hf |= ETH_RSS_IP | ETH_RSS_UDP;
+
 	bp->dev_stopped = 0;
 	rc = bnxt_hwrm_func_reset(bp);
 	if (rc) {
