@@ -495,6 +495,7 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 		 * any auto mode, even "none".
 		 */
 		if (!conf->link_speed) {
+			RTE_LOG(ERR, PMD, "Trying to configure speed Auto\n");
 			req.auto_mode = conf->auto_mode;
 			enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
 			if (conf->auto_mode ==
@@ -1508,10 +1509,11 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		link_req.auto_link_speed_mask =
 			bnxt_parse_eth_link_speed_mask(bp,
 						       dev_conf->link_speeds);
+		RTE_LOG(ERR, PMD, "AutoNeg Mode\n");
 	} else {
 		link_req.phy_flags |= HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE;
 		link_req.link_speed = speed;
-		RTE_LOG(INFO, PMD, "Set Link Speed %x\n", speed);
+		RTE_LOG(ERR, PMD, "Set Link Speed %x\n", speed);
 	}
 	link_req.duplex = bnxt_parse_eth_link_duplex(dev_conf->link_speeds);
 	link_req.auto_pause = bp->link_info.auto_pause;
