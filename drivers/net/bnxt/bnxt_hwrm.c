@@ -536,9 +536,21 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 		 * any auto mode, even "none".
 		 */
 		if (!conf->link_speed) {
-			/* No speeds specified. Enable AutoNeg - all speeds */
-			req.auto_mode =
-				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_ALL_SPEEDS;
+			RTE_LOG(ERR, PMD, "Trying to configure speed Auto\n");
+			req.auto_mode = conf->auto_mode;
+			enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
+			if (conf->auto_mode ==
+			    HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK) {
+				req.auto_link_speed_mask =
+					conf->auto_link_speed_mask;
+				enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
+			}
+			if (bp->link_info.auto_link_speed) {
+				req.auto_link_speed =
+					bp->link_info.auto_link_speed;
+				enables |=
+				HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED;
+			}
 		}
 		/* AutoNeg - Advertise speeds specified. */
 		if (conf->auto_link_speed_mask &&
@@ -1590,6 +1602,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		link_req.auto_link_speed_mask =
 			bnxt_parse_eth_link_speed_mask(bp,
 						       dev_conf->link_speeds);
+		RTE_LOG(ERR, PMD, "AutoNeg Mode\n");
 	} else {
 		if (bp->link_info.phy_type ==
 		    HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASET ||
@@ -1602,13 +1615,8 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		}
 
 		link_req.phy_flags |= HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE;
-		/* If user wants a particular speed try that first. */
-		if (speed)
-			link_req.link_speed = speed;
-		else if (bp->link_info.force_link_speed)
-			link_req.link_speed = bp->link_info.force_link_speed;
-		else
-			link_req.link_speed = bp->link_info.auto_link_speed;
+		link_req.link_speed = speed;
+		RTE_LOG(ERR, PMD, "Set Link Speed %x\n", speed);
 	}
 	link_req.duplex = bnxt_parse_eth_link_duplex(dev_conf->link_speeds);
 	link_req.auto_pause = bp->link_info.auto_pause;
