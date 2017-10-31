@@ -365,8 +365,9 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		},
 		.tx_free_thresh = 32,
 		.tx_rs_thresh = 32,
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-			     ETH_TXQ_FLAGS_NOOFFLOADS,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS,
+		//.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+			     //ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 	eth_dev->data->dev_conf.intr_conf.lsc = 1;
 
