@@ -516,7 +516,8 @@ static int bnxt_dev_set_link_up_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	eth_dev->data->dev_link.link_status = 1;
-	bnxt_set_hwrm_link_config(bp, true);
+	//is this causing the link to go down and not come up at all?
+	//bnxt_set_hwrm_link_config(bp, true);
 	return 0;
 }
 
