@@ -492,7 +492,8 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	bp->flags |= BNXT_FLAG_UPDATE_HASH;
 	bp->rss_conf.rss_hf |= ETH_RSS_IP | ETH_RSS_UDP;
 	/* Set Link Speed to 25G by default */
-	bp->eth_dev->data->dev_conf.link_speeds = ETH_LINK_SPEED_25G;
+	bp->eth_dev->data->dev_conf.link_speeds = ETH_LINK_SPEED_25G |
+						ETH_LINK_SPEED_FIXED;
 
 	bp->dev_stopped = 0;
 	rc = bnxt_hwrm_func_reset(bp);
@@ -542,6 +543,8 @@ static int bnxt_dev_set_link_up_op(struct rte_eth_dev *eth_dev)
 		rc = bnxt_set_hwrm_link_config(bp, true);
 	if (!rc)
 		eth_dev->data->dev_link.link_status = 1;
+
+	//struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	//bnxt_print_link_info(eth_dev);
 	//eth_dev->data->dev_link.link_status = 1;
