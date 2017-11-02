@@ -133,6 +133,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	txq->bp = bp;
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_free_thresh = tx_conf->tx_free_thresh;
+	RTE_LOG(ERR, PMD, "Broadcom: Tx free thresh %d\n", txq->tx_free_thresh);
 
 	rc = bnxt_init_tx_ring_struct(txq, socket_id);
 	if (rc)

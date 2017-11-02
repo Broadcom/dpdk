@@ -170,8 +170,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	last_prod = (txr->tx_prod + tx_buf->nr_bds - 1) &
 				txr->tx_ring_struct->ring_mask;
 
-	if (unlikely(bnxt_tx_avail(txr) < tx_buf->nr_bds))
+	if (unlikely(bnxt_tx_avail(txr) < tx_buf->nr_bds)) {
+		//RTE_LOG(ERR, PMD, "Broadcom: Not enough descriptors for Xmit\n");
 		return -ENOMEM;
+	}
 
 	txbd = &txr->tx_desc_ring[txr->tx_prod];
 	txbd->opaque = txr->tx_prod;
@@ -357,6 +359,11 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 	if (nb_tx_pkts)
 		B_TX_DB(txq->tx_ring->tx_doorbell, txq->tx_ring->tx_prod);
+	if (nb_tx_pkts < nb_pkts) {
+		//RTE_LOG(ERR, PMD,
+			//"Broadcom: Xmitted %d packets out of %d\n",
+			//nb_tx_pkts, nb_pkts);
+	}
 
 	return nb_tx_pkts;
 }
