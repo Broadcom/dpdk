@@ -74,10 +74,8 @@ struct bnxt_cp_ring_info {
 
 
 struct bnxt;
-int bnxt_alloc_def_cp_ring(struct bnxt *bp);
-void bnxt_free_def_cp_ring(struct bnxt *bp);
-int bnxt_init_def_ring_struct(struct bnxt *bp, unsigned int socket_id);
 void bnxt_handle_async_event(struct bnxt *bp, struct cmpl_base *cmp);
 void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmp);
+void bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp);
 
 #endif

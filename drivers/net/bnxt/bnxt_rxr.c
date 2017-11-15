@@ -558,7 +558,11 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				nb_rx_pkts++;
 			if (rc == -EBUSY)	/* partial completion */
 				break;
+		} else {
+			bnxt_event_hwrm_resp_handler(rxq->bp,
+						     (struct cmpl_base *)rxcmp);
 		}
+
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 		if (nb_rx_pkts == nb_pkts)
 			break;

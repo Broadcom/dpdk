@@ -36,6 +36,7 @@
 
 #define INVALID_HW_RING_ID      ((uint16_t)-1)
 #define INVALID_STATS_CTX_ID		((uint16_t)-1)
+#define INVALID_RING_GRP_ID     ((uint16_t)-1)
 
 struct bnxt_ring {
 	void			*bd;
