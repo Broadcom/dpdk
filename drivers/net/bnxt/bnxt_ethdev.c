@@ -151,6 +151,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
+static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
 
 /***********************/
 
@@ -548,10 +549,13 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
 	bp->tx_cp_nr_rings = bp->tx_nr_rings;
 
-	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
+	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		eth_dev->data->mtu =
 				eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
 				ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE;
+		bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
+	}
+
 	return 0;
 }
 
@@ -1546,7 +1550,8 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 
 	bnxt_dev_info_get_op(eth_dev, &dev_info);
 	max_dev_mtu = dev_info.max_rx_pktlen -
-		      ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE * 2;
+		      ETHER_HDR_LEN - ETHER_CRC_LEN -
+		      VLAN_TAG_SIZE * BNXT_NUM_VLANS;
 
 	if (new_mtu < ETHER_MIN_MTU || new_mtu > max_dev_mtu) {
 		PMD_DRV_LOG(ERR, "MTU requested must be within (%d, %d)\n",
@@ -1566,7 +1571,8 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	}
 
 	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len =
-		new_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+		new_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN +
+		VLAN_TAG_SIZE * BNXT_NUM_VLANS;
 
 	eth_dev->data->mtu = new_mtu;
 	PMD_DRV_LOG(INFO, "New MTU is %d\n", eth_dev->data->mtu);
@@ -1575,7 +1581,8 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
 
 		vnic->mru = bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-					ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+					ETHER_CRC_LEN + VLAN_TAG_SIZE *
+					BNXT_NUM_VLANS;
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 		if (rc)
 			break;
