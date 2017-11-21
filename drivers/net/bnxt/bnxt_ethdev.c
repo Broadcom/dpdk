@@ -344,8 +344,10 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 					DEV_TX_OFFLOAD_TCP_CKSUM |
 					DEV_TX_OFFLOAD_UDP_CKSUM |
 					DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
-	if (BNXT_PF(bp))
+	if (BNXT_PF(bp)) {
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
+		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+	}
 
 	/* *INDENT-OFF* */
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
