@@ -224,6 +224,7 @@ struct bnxt {
 #define BNXT_NPAR(bp)		((bp)->port_partition_type)
 #define BNXT_MH(bp)             ((bp)->flags & BNXT_FLAG_MULTI_HOST)
 #define BNXT_SINGLE_PF(bp)      (BNXT_PF(bp) && !BNXT_NPAR(bp) && !BNXT_MH(bp))
+#define BNXT_NPAR_PF(bp)	(BNXT_PF(bp) && (BNXT_NPAR(bp) || BNXT_MH(bp)))
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;

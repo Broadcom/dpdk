@@ -2263,6 +2263,7 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint16_t flags;
 	int rc = 0;
+	uint16_t flags;
 
 	HWRM_PREP(req, FUNC_QCFG);
 	req.fid = rte_cpu_to_le_16(0xffff);
@@ -2273,6 +2274,10 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 
 	/* Hard Coded.. 0xfff VLAN ID mask */
 	bp->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
+	flags = rte_le_to_cpu_16(resp->flags);
+	if (BNXT_PF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_HOST))
+		bp->flags |= BNXT_FLAG_MULTI_HOST;
+
 	flags = rte_le_to_cpu_16(resp->flags);
 	if (BNXT_PF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_HOST))
 		bp->flags |= BNXT_FLAG_MULTI_HOST;
