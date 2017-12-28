@@ -369,10 +369,6 @@ static int bnxt_init_chip(struct bnxt *bp)
 err_out:
 	bnxt_free_all_hwrm_resources(bp);
 
-	/* Some of the error status returned by FW may not be from errno.h */
-	if (rc > 0)
-		rc = -EIO;
-
 	return rc;
 }
 
@@ -3349,7 +3345,6 @@ skip_init:
 	rc = bnxt_hwrm_func_reset(bp);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "hwrm chip reset failure rc: %x\n", rc);
-		rc = -EIO;
 		goto error_free;
 	}
 

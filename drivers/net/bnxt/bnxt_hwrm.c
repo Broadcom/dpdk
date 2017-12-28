@@ -140,7 +140,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	return 0;
 
 err_ret:
-	return -1;
+	return -ETIMEDOUT;
 }
 
 /*
@@ -168,6 +168,8 @@ err_ret:
 	if (rc) { \
 		PMD_DRV_LOG(ERR, "failed rc:%d\n", rc); \
 		rte_spinlock_unlock(&bp->hwrm_lock); \
+		if (rc > 0) \
+			rc = -EINVAL; \
 		return rc; \
 	} \
 	if (resp->error_code) { \
@@ -186,6 +188,8 @@ err_ret:
 			PMD_DRV_LOG(ERR, "error %d\n", rc); \
 		} \
 		rte_spinlock_unlock(&bp->hwrm_lock); \
+		if (rc > 0) \
+			rc = -EINVAL; \
 		return rc; \
 	} \
 } while (0)
