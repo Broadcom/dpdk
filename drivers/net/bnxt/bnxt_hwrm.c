@@ -338,6 +338,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		pf->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
 		pf->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
 		pf->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
+		pf->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 		pf->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 		pf->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 		pf->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
@@ -351,9 +352,14 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		vf->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
 		vf->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
 		vf->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
+		vf->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 		vf->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 		vf->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 	}
+	bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
+	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
+	bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
+	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 	HWRM_UNLOCK();
 
 	return rc;

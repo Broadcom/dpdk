@@ -61,6 +61,7 @@ struct bnxt_vf_info {
 	uint16_t		max_cp_rings;
 	uint16_t		max_tx_rings;
 	uint16_t		max_rx_rings;
+	uint16_t		max_stat_ctx;
 	uint16_t		max_l2_ctx;
 	uint16_t		max_vnics;
 	uint16_t		vlan;
@@ -80,6 +81,7 @@ struct bnxt_pf_info {
 	uint16_t		max_cp_rings;
 	uint16_t		max_tx_rings;
 	uint16_t		max_rx_rings;
+	uint16_t		max_stat_ctx;
 	uint16_t		max_l2_ctx;
 	uint16_t		max_vnics;
 	uint16_t		first_vf_id;
@@ -179,6 +181,10 @@ struct bnxt {
 	rte_spinlock_t			hwrm_lock;
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;
+	uint16_t		max_cp_rings;
+	uint16_t		max_tx_rings;
+	uint16_t		max_rx_rings;
+	uint16_t		max_stat_ctx;
 
 	struct bnxt_link_info	link_info;
 	struct bnxt_cos_queue_info	cos_queue[BNXT_COS_QUEUE_COUNT];
