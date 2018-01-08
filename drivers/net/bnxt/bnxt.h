@@ -219,6 +219,7 @@ struct bnxt {
 #define BNXT_FLAG_UPDATE_HASH	(1 << 5)
 #define BNXT_FLAG_PTP_SUPPORTED	(1 << 6)
 #define BNXT_FLAG_MULTI_HOST    (1 << 7)
+#define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1 << 31)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
@@ -263,6 +264,7 @@ struct bnxt {
 #define MAX_NUM_MAC_ADDR	32
 	uint8_t			mac_addr[ETHER_ADDR_LEN];
 
+	uint32_t			hwrm_spec_code;
 	uint16_t			hwrm_cmd_seq;
 	void				*hwrm_cmd_resp_addr;
 	rte_iova_t			hwrm_cmd_resp_dma_addr;
