@@ -323,14 +323,15 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t db_mask = txq->tx_ring->tx_ring_struct->ring_size >> 2;
 	uint16_t last_db_mask = 0;
 
-	/* Handle TX completions */
-	bnxt_handle_tx_cp(txq);
-
 	/* Tx queue was stopped; wait for it to be restarted */
-	if (txq->tx_deferred_start) {
+	if (unlikely(txq->tx_deferred_start)) {
 		PMD_DRV_LOG(DEBUG, "Tx q stopped;return\n");
 		return 0;
 	}
+
+	/* Handle TX completions */
+	bnxt_handle_tx_cp(txq);
+
 	/* Handle TX burst request */
 	for (nb_tx_pkts = 0; nb_tx_pkts < nb_pkts; nb_tx_pkts++) {
 		if (bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq)) {
@@ -365,10 +366,10 @@ int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	struct bnxt_tx_queue *txq = bp->tx_queues[tx_queue_id];
 
 	/* Handle TX completions */
+	txq->tx_deferred_start = true;
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	bnxt_handle_tx_cp(txq);
 
-	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
-	txq->tx_deferred_start = true;
 	PMD_DRV_LOG(DEBUG, "Tx queue stopped\n");
 
 	return 0;

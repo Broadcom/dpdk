@@ -536,7 +536,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	int rc = 0;
 
 	/* If Rx Q was stopped return */
-	if (rxq->rx_deferred_start)
+	if (rxq->rx_deferred_start || !rte_spinlock_trylock(&rxq->lock))
 		return 0;
 
 	/* Handle RX burst request */
@@ -574,7 +574,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * For PMD, there is no need to keep on pushing to REARM
 		 * the doorbell if there are no new completions
 		 */
-		return nb_rx_pkts;
+		goto done;
 	}
 
 	B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
@@ -604,6 +604,9 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			}
 		}
 	}
+
+done:
+	rte_spinlock_unlock(&rxq->lock);
 
 	return nb_rx_pkts;
 }

@@ -24,6 +24,7 @@
 #define VLAN_TAG_SIZE		4
 #define BNXT_MAX_LED		4
 #define BNXT_NUM_VLANS		2
+#define BNXT_DB_SIZE		0x80
 
 struct bnxt_led_info {
 	uint8_t      led_id;

@@ -32,6 +32,11 @@ struct bnxt_rx_queue {
 	uint32_t			rx_buf_use_size;  /* useable size */
 	struct bnxt_rx_ring_info	*rx_ring;
 	struct bnxt_cp_ring_info	*cp_ring;
+
+	rte_spinlock_t		lock;	/*
+					 * Synchronize between rx_queue_stop
+					 * and fast path
+					 */
 };
 
 void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq);
@@ -52,4 +57,6 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev,
 			uint16_t rx_queue_id);
 int bnxt_rx_queue_stop(struct rte_eth_dev *dev,
 		       uint16_t rx_queue_id);
+void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq);
+
 #endif
