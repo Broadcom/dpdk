@@ -68,8 +68,12 @@ int bnxt_alloc_filter_mem(struct bnxt *bp);
 struct bnxt_filter_info *bnxt_get_unused_filter(struct bnxt *bp);
 void bnxt_free_filter(struct bnxt *bp, struct bnxt_filter_info *filter);
 struct bnxt_filter_info *bnxt_get_l2_filter(struct bnxt *bp,
-		struct bnxt_filter_info *nf, struct bnxt_vnic_info *vnic);
-int check_zero_bytes(const uint8_t *bytes, int len);
+					    struct bnxt_filter_info *nf,
+					    struct bnxt_vnic_info *vnic);
+int bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
+			enum rte_filter_type filter_type,
+			enum rte_filter_op filter_op,
+			void *arg);
 
 #define NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_MACADDR	\
 	HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_SRC_MACADDR
@@ -135,4 +139,5 @@ int check_zero_bytes(const uint8_t *bytes, int len);
 	HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_MIRROR_VNIC_ID
 #define NTUPLE_FLTR_ALLOC_INPUT_EN_MIRROR_VNIC_ID	\
 	HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_MIRROR_VNIC_ID
-#endif
+
+#endif /* _BNXT_FILTER_H_ */
