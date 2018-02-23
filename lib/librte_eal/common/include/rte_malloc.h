@@ -158,6 +158,13 @@ void *
 rte_malloc_socket(const char *type, size_t size, unsigned align, int socket);
 
 /**
+ * This function allocates memory from the huge-page area of memory or
+ * from reserved memory.
+ */
+void *
+rte_malloc_cmem(const char *type, size_t size, size_t align, int socket);
+
+/**
  * Allocate zero'ed memory from the heap.
  *
  * Equivalent to rte_malloc() except that the memory zone is

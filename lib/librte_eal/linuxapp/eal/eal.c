@@ -66,6 +66,7 @@ static rte_usage_hook_t	rte_application_usage_hook = NULL;
 
 /* early configuration structure, when memory config is not mmapped */
 static struct rte_mem_config early_mem_config;
+static struct rte_memseg *iso_cmemseg;
 
 /* define fd variable here, because file needs to be kept open for the
  * duration of the program, as we hold a write lock on it in the primary proc */
@@ -110,10 +111,81 @@ rte_eal_mbuf_default_mempool_ops(void)
 }
 
 /* Return a pointer to the configuration structure */
+struct rte_memseg *
+rte_eal_get_iso_cmemseg(void)
+{
+	if (internal_config.iso_cmem == 1)
+		return iso_cmemseg;
+
+	return NULL;
+}
+
 struct rte_config *
 rte_eal_get_configuration(void)
 {
 	return &rte_config;
+}
+
+static struct rte_memseg *map_cmem_virtual_area(void)
+{
+	void *addr = NULL;
+	int fd;
+	off_t filesize;
+	struct rte_memseg *cmemseg;
+	struct rte_mem_config *mcfg;
+	unsigned int i;
+	unsigned int socket = 0;
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	if (mcfg == NULL)
+		return NULL;
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		if (mcfg->memseg[i].addr == NULL) {
+			cmemseg = &mcfg->memseg[i];
+			break;
+		}
+		socket |= (1 << mcfg->memseg[i].socket_id);
+	}
+
+	if (!cmemseg)
+		return NULL;
+
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
+		if (!(socket & (1 << i))) {
+			cmemseg->socket_id = i;
+			break;
+		}
+	}
+	if (i == RTE_MAX_NUMA_NODES)
+		goto error;
+
+	fd = open("/dev/cmem", O_RDWR);
+	if (fd < 0) {
+		RTE_LOG(ERR, EAL, "Cannot open /dev/cmem\n");
+		goto error;
+	}
+
+	filesize = lseek(fd, 0, SEEK_END);
+	if (filesize < 0) {
+		close(fd);
+		goto error;
+	}
+
+	addr = mmap(NULL, filesize, (PROT_READ | PROT_WRITE),
+			MAP_SHARED, fd, 0);
+	close(fd);
+	if (addr == MAP_FAILED)
+		goto error;
+
+	memset(addr, 0, filesize);
+	cmemseg->phys_addr = rte_mem_virt2phy(addr);
+	cmemseg->addr_64 = addr;
+	cmemseg->len = filesize;
+
+	return cmemseg;
+error:
+	return NULL;
 }
 
 enum rte_iova_mode
@@ -863,6 +935,9 @@ rte_eal_init(int argc, char **argv)
 
 	/* the directories are locked during eal_hugepage_info_init */
 	eal_hugedirs_unlock();
+
+	if (internal_config.iso_cmem == 1)
+		iso_cmemseg = map_cmem_virtual_area();
 
 	if (rte_eal_malloc_heap_init() < 0) {
 		rte_eal_init_alert("Cannot init malloc heap\n");
