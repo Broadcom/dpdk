@@ -34,6 +34,23 @@ void rte_free(void *addr)
 }
 
 /*
+ * Allocate memory on cmem heap if cmem segment available else allocate
+ * from normal heap.
+ */
+void *
+rte_malloc_cmem(const char *type, size_t size, size_t align, int socket_id)
+{
+	struct rte_memseg *cmemseg = rte_eal_get_iso_cmemseg();
+	void *addr;
+
+	if (cmemseg)
+		socket_id = cmemseg->socket_id;
+
+	addr = rte_malloc_socket(NULL, size, align, socket_id);
+	return addr;
+}
+
+/*
  * Allocate memory on specified heap.
  */
 void *

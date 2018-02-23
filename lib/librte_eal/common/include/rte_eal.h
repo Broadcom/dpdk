@@ -76,6 +76,14 @@ struct rte_config {
 } __attribute__((__packed__));
 
 /**
+ * Get the global custom memory segment structure.
+ *
+ * @return
+ *   A pointer to the global cmemseg structure.
+ */
+struct rte_memseg *rte_eal_get_iso_cmemseg(void);
+
+/**
  * Get the global configuration structure.
  *
  * @return

@@ -55,6 +55,8 @@ enum {
 	OPT_VFIO_INTR_NUM,
 #define OPT_VMWARE_TSC_MAP    "vmware-tsc-map"
 	OPT_VMWARE_TSC_MAP_NUM,
+#define OPT_ISO_CMEM          "iso-cmem"
+	OPT_ISO_CMEM_NUM,
 #define OPT_LEGACY_MEM    "legacy-mem"
 	OPT_LEGACY_MEM_NUM,
 #define OPT_SINGLE_FILE_SEGMENTS    "single-file-segments"
