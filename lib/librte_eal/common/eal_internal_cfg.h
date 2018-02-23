@@ -37,6 +37,7 @@ struct internal_config {
 	volatile unsigned no_hugetlbfs;   /**< true to disable hugetlbfs */
 	unsigned hugepage_unlink;         /**< true to unlink backing files */
 	volatile unsigned no_pci;         /**< true to disable PCI */
+	unsigned int iso_cmem;            /**< true to enable isolated cmem */
 	volatile unsigned no_hpet;        /**< true to disable HPET */
 	volatile unsigned vmware_tsc_map; /**< true to use VMware TSC mapping
 										* instead of native TSC */
