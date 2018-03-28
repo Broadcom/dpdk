@@ -23,10 +23,13 @@
 void bnxt_free_tx_rings(struct bnxt *bp)
 {
 	int i;
+	struct bnxt_tx_queue *txq;
+
+	if (!bp->tx_queues)
+		return;
 
 	for (i = 0; i < (int)bp->tx_nr_rings; i++) {
-		struct bnxt_tx_queue *txq = bp->tx_queues[i];
-
+		txq = bp->tx_queues[i];
 		if (!txq)
 			continue;
 
