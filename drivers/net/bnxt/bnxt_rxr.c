@@ -604,10 +604,13 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 void bnxt_free_rx_rings(struct bnxt *bp)
 {
 	int i;
+	struct bnxt_rx_queue *rxq;
+
+	if (!bp->rx_queues)
+		return;
 
 	for (i = 0; i < (int)bp->rx_nr_rings; i++) {
-		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
-
+		rxq = bp->rx_queues[i];
 		if (!rxq)
 			continue;
 
