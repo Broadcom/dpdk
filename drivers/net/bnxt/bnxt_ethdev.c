@@ -286,8 +286,9 @@ static int bnxt_init_chip(struct bnxt *bp)
 		intr_vector = bp->eth_dev->data->nb_rx_queues;
 		PMD_DRV_LOG(DEBUG, "intr_vector = %d\n", intr_vector);
 		if (intr_vector > bp->rx_cp_nr_rings) {
-			PMD_DRV_LOG(ERR, "At most %d intr queues supported",
-					bp->rx_cp_nr_rings);
+			PMD_DRV_LOG(ERR,
+				    "At most %d intr queues supported\n",
+				    bp->rx_cp_nr_rings);
 			return -ENOTSUP;
 		}
 		if (rte_intr_efd_enable(intr_handle, intr_vector))
@@ -300,8 +301,9 @@ static int bnxt_init_chip(struct bnxt *bp)
 				    bp->eth_dev->data->nb_rx_queues *
 				    sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
-			PMD_DRV_LOG(ERR, "Failed to allocate %d rx_queues"
-				" intr_vec", bp->eth_dev->data->nb_rx_queues);
+			PMD_DRV_LOG(ERR,
+				    "Failed to allocate %d rx_queues intr_vec\n",
+				    bp->eth_dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 		PMD_DRV_LOG(DEBUG, "intr_handle->intr_vec = %p "
@@ -1716,8 +1718,9 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 
 	if (efilter->ether_type == ETHER_TYPE_IPv4 ||
 		efilter->ether_type == ETHER_TYPE_IPv6) {
-		PMD_DRV_LOG(ERR, "invalid ether_type(0x%04x) in"
-			" ethertype filter.", efilter->ether_type);
+		PMD_DRV_LOG(ERR,
+			    "invalid ether_type(0x%04x) in ethertype filter\n",
+			    efilter->ether_type);
 		*ret = -EINVAL;
 		goto exit;
 	}
@@ -1781,7 +1784,8 @@ bnxt_ethertype_filter(struct rte_eth_dev *dev,
 		return 0;
 
 	if (arg == NULL) {
-		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
+		PMD_DRV_LOG(ERR,
+			    "arg shouldn't be NULL for operation %u\n",
 			    filter_op);
 		return -EINVAL;
 	}
@@ -1846,7 +1850,7 @@ bnxt_ethertype_filter(struct rte_eth_dev *dev,
 		}
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
+		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
 		ret = -EINVAL;
 		goto error;
 	}
@@ -1877,7 +1881,7 @@ parse_ntuple_filter(struct bnxt *bp,
 			NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "invalid dst_port mask.");
+		PMD_DRV_LOG(ERR, "invalid dst_port mask\n");
 		return -EINVAL;
 	}
 
@@ -1895,7 +1899,7 @@ parse_ntuple_filter(struct bnxt *bp,
 		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "invalid protocol mask.");
+		PMD_DRV_LOG(ERR, "invalid protocol mask\n");
 		return -EINVAL;
 	}
 
@@ -1907,7 +1911,7 @@ parse_ntuple_filter(struct bnxt *bp,
 			NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "invalid dst_ip mask.");
+		PMD_DRV_LOG(ERR, "invalid dst_ip mask\n");
 		return -EINVAL;
 	}
 
@@ -1919,7 +1923,7 @@ parse_ntuple_filter(struct bnxt *bp,
 			NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "invalid src_ip mask.");
+		PMD_DRV_LOG(ERR, "invalid src_ip mask\n");
 		return -EINVAL;
 	}
 
@@ -1931,7 +1935,7 @@ parse_ntuple_filter(struct bnxt *bp,
 			NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "invalid src_port mask.");
+		PMD_DRV_LOG(ERR, "invalid src_port mask\n");
 		return -EINVAL;
 	}
 
@@ -1984,7 +1988,7 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 	int ret;
 
 	if (nfilter->flags != RTE_5TUPLE_FLAGS) {
-		PMD_DRV_LOG(ERR, "only 5tuple is supported.");
+		PMD_DRV_LOG(ERR, "only 5tuple is supported\n");
 		return -EINVAL;
 	}
 
@@ -2036,7 +2040,7 @@ bnxt_cfg_ntuple_filter(struct bnxt *bp,
 		goto free_filter;
 	}
 	if (mfilter == NULL && filter_op == RTE_ETH_FILTER_DELETE) {
-		PMD_DRV_LOG(ERR, "filter doesn't exist.");
+		PMD_DRV_LOG(ERR, "filter doesn't exist\n");
 		ret = -ENOENT;
 		goto free_filter;
 	}
@@ -2081,7 +2085,8 @@ bnxt_ntuple_filter(struct rte_eth_dev *dev,
 		return 0;
 
 	if (arg == NULL) {
-		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
+		PMD_DRV_LOG(ERR,
+			    "arg shouldn't be NULL for operation %u\n",
 			    filter_op);
 		return -EINVAL;
 	}
@@ -2098,7 +2103,7 @@ bnxt_ntuple_filter(struct rte_eth_dev *dev,
 			filter_op);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
+		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
 		ret = -EINVAL;
 		break;
 	}
@@ -2484,10 +2489,10 @@ bnxt_fdir_filter(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_UPDATE:
 	case RTE_ETH_FILTER_STATS:
 	case RTE_ETH_FILTER_INFO:
-		PMD_DRV_LOG(ERR, "operation %u not implemented", filter_op);
+		PMD_DRV_LOG(ERR, "operation %u not implemented\n", filter_op);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unknown operation %u", filter_op);
+		PMD_DRV_LOG(ERR, "unknown operation %u\n", filter_op);
 		ret = -EINVAL;
 		break;
 	}
@@ -2839,10 +2844,11 @@ bnxt_get_eeprom_op(struct rte_eth_dev *dev,
 	uint32_t index;
 	uint32_t offset;
 
-	PMD_DRV_LOG(INFO, "%04x:%02x:%02x:%02x in_eeprom->offset = %d "
-		"len = %d\n", bp->pdev->addr.domain,
-		bp->pdev->addr.bus, bp->pdev->addr.devid,
-		bp->pdev->addr.function, in_eeprom->offset, in_eeprom->length);
+	PMD_DRV_LOG(INFO,
+		    "%04x:%02x:%02x:%02x in_eeprom->offset = %d len = %d\n",
+		    bp->pdev->addr.domain,
+		    bp->pdev->addr.bus, bp->pdev->addr.devid,
+		    bp->pdev->addr.function, in_eeprom->offset, in_eeprom->length);
 
 	if (in_eeprom->offset == 0) /* special offset value to get directory */
 		return bnxt_get_nvram_directory(bp, in_eeprom->length,
@@ -2908,10 +2914,11 @@ bnxt_set_eeprom_op(struct rte_eth_dev *dev,
 	uint8_t index, dir_op;
 	uint16_t type, ext, ordinal, attr;
 
-	PMD_DRV_LOG(INFO, "%04x:%02x:%02x:%02x in_eeprom->offset = %d "
-		"len = %d\n", bp->pdev->addr.domain,
-		bp->pdev->addr.bus, bp->pdev->addr.devid,
-		bp->pdev->addr.function, in_eeprom->offset, in_eeprom->length);
+	PMD_DRV_LOG(INFO,
+		    "%04x:%02x:%02x:%02x in_eeprom->offset = %d len = %d\n",
+		    bp->pdev->addr.domain, bp->pdev->addr.bus,
+		    bp->pdev->addr.devid, bp->pdev->addr.function,
+		    in_eeprom->offset, in_eeprom->length);
 
 	if (!BNXT_PF(bp)) {
 		PMD_DRV_LOG(ERR, "NVM write not supported from a VF\n");

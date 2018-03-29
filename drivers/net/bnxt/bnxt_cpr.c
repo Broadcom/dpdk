@@ -75,7 +75,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 	if (fw_vf_id < bp->pf.first_vf_id ||
 	    fw_vf_id >= (bp->pf.first_vf_id) + bp->pf.active_vfs) {
 		PMD_DRV_LOG(ERR,
-		"FWD req's source_id 0x%x out of range 0x%x - 0x%x (%d %d)\n",
+			"FWD req source_id 0x%x out of range 0x%x - 0x%x (%d %d)\n",
 			fw_vf_id, bp->pf.first_vf_id,
 			(bp->pf.first_vf_id) + bp->pf.active_vfs - 1,
 			bp->pf.first_vf_id, bp->pf.active_vfs);

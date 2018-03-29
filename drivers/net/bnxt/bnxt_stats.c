@@ -366,7 +366,7 @@ int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
 	bnxt_dev_xstats_get_by_id_op(dev, NULL, values_copy, stat_cnt);
 	for (i = 0; i < limit; i++) {
 		if (ids[i] >= stat_cnt) {
-			PMD_DRV_LOG(ERR, "id value isn't valid");
+			PMD_DRV_LOG(ERR, "id value isn't valid\n");
 			return -1;
 		}
 		values[i] = values_copy[ids[i]];
@@ -392,7 +392,7 @@ int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
 
 	for (i = 0; i < limit; i++) {
 		if (ids[i] >= stat_cnt) {
-			PMD_DRV_LOG(ERR, "id value isn't valid");
+			PMD_DRV_LOG(ERR, "id value isn't valid\n");
 			return -1;
 		}
 		strcpy(xstats_names[i].name,

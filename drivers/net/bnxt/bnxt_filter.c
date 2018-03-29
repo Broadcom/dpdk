@@ -144,7 +144,7 @@ int bnxt_alloc_filter_mem(struct bnxt *bp)
 				 max_filters * sizeof(struct bnxt_filter_info),
 				 0);
 	if (filter_mem == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d filters",
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d filters\n",
 			max_filters);
 		return -ENOMEM;
 	}
@@ -264,7 +264,7 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 			use_ntuple |= 1;
 			break;
 		default:
-			PMD_DRV_LOG(ERR, "Unknown Flow type");
+			PMD_DRV_LOG(ERR, "Unknown Flow type\n");
 			use_ntuple |= 1;
 		}
 		item++;
@@ -1078,7 +1078,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		bnxt_hwrm_clear_l2_filter(bp, filter);
 		goto free_filter;
 	} else if (ret == -EXDEV) {
-		PMD_DRV_LOG(DEBUG, "Flow with same pattern exists");
+		PMD_DRV_LOG(DEBUG, "Flow with same pattern exists\n");
 		PMD_DRV_LOG(DEBUG, "Updating with different destination\n");
 		update_flow = true;
 	}
