@@ -306,10 +306,10 @@ static int bnxt_init_chip(struct bnxt *bp)
 				    bp->eth_dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
-		PMD_DRV_LOG(DEBUG, "intr_handle->intr_vec = %p "
-			"intr_handle->nb_efd = %d intr_handle->max_intr = %d\n",
-			 intr_handle->intr_vec, intr_handle->nb_efd,
-			intr_handle->max_intr);
+		PMD_DRV_LOG(DEBUG,
+			    "intr_handle->intr_vec = %p intr_handle->nb_efd = %d intr_handle->max_intr = %d\n",
+			    intr_handle->intr_vec, intr_handle->nb_efd,
+			    intr_handle->max_intr);
 	}
 
 	for (queue_id = 0; queue_id < bp->eth_dev->data->nb_rx_queues;
@@ -826,9 +826,9 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 
 	if (reta_size != HW_HASH_INDEX_SIZE) {
-		PMD_DRV_LOG(ERR, "The configured hash table lookup size "
-			"(%d) must equal the size supported by the hardware "
-			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
+		PMD_DRV_LOG(ERR,
+			    "Configured hash table lookup size (%d) != (%d)\n",
+			    reta_size, HW_HASH_INDEX_SIZE);
 		return -EINVAL;
 	}
 	/* Update the RSS VNIC(s) */
@@ -858,9 +858,9 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 
 	if (reta_size != HW_HASH_INDEX_SIZE) {
-		PMD_DRV_LOG(ERR, "The configured hash table lookup size "
-			"(%d) must equal the size supported by the hardware "
-			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
+		PMD_DRV_LOG(ERR,
+			    "Configured hash table lookup size (%d) != (%d)\n",
+			    reta_size, HW_HASH_INDEX_SIZE);
 		return -EINVAL;
 	}
 	/* EW - need to revisit here copying from uint64_t to uint16_t */
