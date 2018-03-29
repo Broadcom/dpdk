@@ -73,12 +73,12 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 	fwd_cmd = (struct input *)bp->pf.vf_info[vf_id].req_buf;
 
 	if (fw_vf_id < bp->pf.first_vf_id ||
-	    fw_vf_id >= (bp->pf.first_vf_id) + bp->pf.active_vfs) {
+	    fw_vf_id >= bp->pf.first_vf_id + bp->pf.active_vfs) {
 		PMD_DRV_LOG(ERR,
-		"FWD req's source_id 0x%x out of range 0x%x - 0x%x (%d %d)\n",
-			fw_vf_id, bp->pf.first_vf_id,
-			(bp->pf.first_vf_id) + bp->pf.active_vfs - 1,
-			bp->pf.first_vf_id, bp->pf.active_vfs);
+			    "FWD req 0x%x out of range 0x%x - 0x%x (%d %d)\n",
+			    fw_vf_id, bp->pf.first_vf_id,
+			    bp->pf.first_vf_id + bp->pf.active_vfs - 1,
+			    bp->pf.first_vf_id, bp->pf.active_vfs);
 		goto reject;
 	}
 
@@ -94,7 +94,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 			if (vfc->enables &
 			    HWRM_FUNC_VF_CFG_INPUT_ENABLES_DFLT_MAC_ADDR) {
 				bnxt_hwrm_func_vf_mac(bp, vf_id,
-				(const uint8_t *)"\x00\x00\x00\x00\x00");
+				     (const uint8_t *)"\x00\x00\x00\x00\x00");
 			}
 		}
 		if (fwd_cmd->req_type == HWRM_CFA_L2_SET_RX_MASK) {
@@ -103,10 +103,10 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 
 			srm->vlan_tag_tbl_addr = rte_cpu_to_le_64(0);
 			srm->num_vlan_tags = rte_cpu_to_le_32(0);
-			srm->mask &= ~rte_cpu_to_le_32(
-				HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLANONLY |
-			    HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN |
-			    HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ANYVLAN_NONVLAN);
+			srm->mask &= ~rte_cpu_to_le_32
+			  (HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLANONLY |
+			   HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN |
+			   HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ANYVLAN_NONVLAN);
 		}
 		/* Forward */
 		rc = bnxt_hwrm_exec_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
@@ -127,8 +127,6 @@ reject:
 			fw_vf_id - bp->pf.first_vf_id,
 			rte_le_to_cpu_16(fwd_cmd->req_type));
 	}
-
-	return;
 }
 
 void bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
