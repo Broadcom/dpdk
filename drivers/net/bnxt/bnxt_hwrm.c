@@ -2988,7 +2988,6 @@ int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx,
 		stats->q_errors[idx] += rte_le_to_cpu_64(resp->tx_err_pkts);
 	}
 
-
 	HWRM_UNLOCK();
 
 	return rc;
@@ -3232,7 +3231,6 @@ int bnxt_hwrm_erase_nvram_directory(struct bnxt *bp, uint8_t index)
 
 	return rc;
 }
-
 
 int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 			  uint16_t dir_ordinal, uint16_t dir_ext,
@@ -3586,7 +3584,6 @@ int bnxt_hwrm_set_ntuple_filter(struct bnxt *bp,
 	enables = filter->enables |
 	      HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_DST_ID;
 	req.dst_id = rte_cpu_to_le_16(dst_id);
-
 
 	if (filter->ip_addr_type) {
 		req.ip_addr_type = filter->ip_addr_type;

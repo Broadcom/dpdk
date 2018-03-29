@@ -1664,7 +1664,6 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 	if (rx_buf->mbuf == NULL)
 		return RTE_ETH_RX_DESC_UNAVAIL;
 
-
 	return RTE_ETH_RX_DESC_AVAIL;
 }
 

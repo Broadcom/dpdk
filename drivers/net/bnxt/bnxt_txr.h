@@ -53,7 +53,6 @@ int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 					 PKT_TX_OUTER_IP_CKSUM)
 #define PKT_TX_TCP_UDP_CKSUM		(PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)
 
-
 #define TX_BD_FLG_TIP_IP_TCP_UDP_CHKSUM	(TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM | \
 					TX_BD_LONG_LFLAGS_T_IP_CHKSUM | \
 					TX_BD_LONG_LFLAGS_IP_CHKSUM)

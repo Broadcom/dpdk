@@ -71,7 +71,6 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 	if (rx_buf == NULL)
 		PMD_DRV_LOG(ERR, "Jumbo Frame. rx_buf is NULL\n");
 
-
 	rx_buf->mbuf = mbuf;
 
 	rxbd->addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));

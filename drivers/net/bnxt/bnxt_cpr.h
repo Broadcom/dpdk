@@ -72,7 +72,6 @@ struct bnxt_cp_ring_info {
 #define RX_CMP_L2_ERRORS						\
 	(RX_PKT_CMPL_ERRORS_BUFFER_ERROR_MASK | RX_PKT_CMPL_ERRORS_CRC_ERROR)
 
-
 struct bnxt;
 int bnxt_alloc_def_cp_ring(struct bnxt *bp);
 void bnxt_free_def_cp_ring(struct bnxt *bp);
