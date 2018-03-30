@@ -180,7 +180,7 @@ static struct rte_memseg *map_cmem_virtual_area(void)
 
 	memset(addr, 0, filesize);
 	cmemseg->phys_addr = rte_mem_virt2phy(addr);
-	cmemseg->addr_64 = addr;
+	cmemseg->addr_64 = (uint64_t)addr;
 	cmemseg->len = filesize;
 
 	return cmemseg;
