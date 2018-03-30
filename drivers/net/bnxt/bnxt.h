@@ -59,6 +59,7 @@ struct bnxt_led_cfg {
 
 #define BNXT_LED_DFLT_ENABLES(x)                        \
 	rte_cpu_to_le_32(BNXT_LED_DFLT_ENA << (BNXT_LED_DFLT_ENA_SHIFT * (x)))
+#define BNXT_NA_SIGNATURE_UINT64		((uint64_t)(-1))
 
 enum bnxt_hw_context {
 	HW_CONTEXT_NONE     = 0,
