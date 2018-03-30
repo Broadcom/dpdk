@@ -41,6 +41,16 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added support for Broadcom NetXtreme-S (BCM58800) family of controllers (aka Stingray) **
+
+  The BCM58800 devices feature a NetXtreme E-Series advanced network controller, a high-performance
+  ARM CPU block, PCI Express (PCIe) Gen3 interfaces, key accelerators for compute offload and a high-
+  speed memory subsystem including L3 cache and DDR4 interfaces, all interconnected by a coherent
+  Network-on-chip (NOC) fabric.
+
+  The ARM CPU subsystem features eight ARMv8 Cortex-A72 CPUs at 3.0 GHz, arranged in a multi-cluster
+  configuration.
+
 * **Added RSS hash and key update to CXGBE PMD.**
 
   Support to update RSS hash and key has been added to CXGBE PMD.
