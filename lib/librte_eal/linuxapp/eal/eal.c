@@ -131,7 +131,7 @@ static struct rte_memseg *map_cmem_virtual_area(void)
 	void *addr = NULL;
 	int fd;
 	off_t filesize;
-	struct rte_memseg *cmemseg;
+	struct rte_memseg *cmemseg = NULL;
 	struct rte_mem_config *mcfg;
 	unsigned int i;
 	unsigned int socket = 0;
