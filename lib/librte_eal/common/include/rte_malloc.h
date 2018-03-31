@@ -161,7 +161,10 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket);
  * from reserved memory.
  */
 void *
-rte_malloc_cmem(const char *type, size_t size, size_t align, int socket);
+rte_malloc_cmem(__rte_unused const char *type,
+		size_t size,
+		size_t align,
+		int socket);
 
 /**
  * Allocate zero'ed memory from the heap.

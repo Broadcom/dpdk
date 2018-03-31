@@ -38,7 +38,10 @@ void rte_free(void *addr)
  * from normal heap.
  */
 void *
-rte_malloc_cmem(const char *type, size_t size, size_t align, int socket_id)
+rte_malloc_cmem(__rte_unused const char *type,
+		size_t size,
+		size_t align,
+		int socket_id)
 {
 	struct rte_memseg *cmemseg = rte_eal_get_iso_cmemseg();
 	void *addr;
