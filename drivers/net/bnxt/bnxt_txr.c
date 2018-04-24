@@ -303,8 +303,9 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 				nb_tx_pkts++;
 			else
 				RTE_LOG_DP(DEBUG, PMD,
-						"Unhandled CMP type %02x\n",
-						CMP_TYPE(txcmp));
+					   "Unhandled CMP type %02x\n",
+					   CMP_TYPE(txcmp));
+
 			raw_cons = NEXT_RAW_CMP(raw_cons);
 		}
 		if (nb_tx_pkts)
@@ -315,8 +316,9 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 	return nb_tx_pkts;
 }
 
-uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
-			       uint16_t nb_pkts)
+uint16_t bnxt_xmit_pkts(void *tx_queue,
+			struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts)
 {
 	struct bnxt_tx_queue *txq = tx_queue;
 	uint16_t nb_tx_pkts = 0;
@@ -338,7 +340,8 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			break;
 		} else if ((nb_tx_pkts & db_mask) != last_db_mask) {
 			B_TX_DB(txq->tx_ring->tx_doorbell,
-					txq->tx_ring->tx_prod);
+				txq->tx_ring->tx_prod);
+
 			last_db_mask = nb_tx_pkts & db_mask;
 		}
 	}

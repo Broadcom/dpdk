@@ -30,7 +30,7 @@ struct bnxt_tx_ring_info {
 };
 
 struct bnxt_sw_tx_bd {
-	struct rte_mbuf		*mbuf; /* mbuf associated with TX descriptor */
+	struct rte_mbuf		*mbuf;
 	uint8_t			is_gso;
 	unsigned short		nr_bds;
 };
@@ -38,8 +38,10 @@ struct bnxt_sw_tx_bd {
 void bnxt_free_tx_rings(struct bnxt *bp);
 int bnxt_init_one_tx_ring(struct bnxt_tx_queue *txq);
 int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id);
-uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
-			       uint16_t nb_pkts);
+
+uint16_t bnxt_xmit_pkts(void *tx_queue,
+			struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts);
 int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
@@ -52,7 +54,6 @@ int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 #define PKT_TX_OIP_IIP_CKSUM		(PKT_TX_IP_CKSUM |	\
 					 PKT_TX_OUTER_IP_CKSUM)
 #define PKT_TX_TCP_UDP_CKSUM		(PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)
-
 
 #define TX_BD_FLG_TIP_IP_TCP_UDP_CHKSUM	(TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM | \
 					TX_BD_LONG_LFLAGS_T_IP_CHKSUM | \
