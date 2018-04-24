@@ -57,12 +57,16 @@ struct bnxt_vnic_info {
 
 struct bnxt;
 void bnxt_init_vnics(struct bnxt *bp);
-int bnxt_free_vnic(struct bnxt *bp, struct bnxt_vnic_info *vnic,
-			  int pool);
+
+int bnxt_free_vnic(struct bnxt *bp,
+		   struct bnxt_vnic_info *vnic,
+		   int pool);
+
 struct bnxt_vnic_info *bnxt_alloc_vnic(struct bnxt *bp);
 void bnxt_free_all_vnics(struct bnxt *bp);
 void bnxt_free_vnic_attributes(struct bnxt *bp);
 int bnxt_alloc_vnic_attributes(struct bnxt *bp);
 void bnxt_free_vnic_mem(struct bnxt *bp);
 int bnxt_alloc_vnic_mem(struct bnxt *bp);
+
 #endif

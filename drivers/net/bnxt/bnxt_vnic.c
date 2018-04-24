@@ -62,8 +62,9 @@ void bnxt_init_vnics(struct bnxt *bp)
 		STAILQ_INIT(&bp->ff_pool[i]);
 }
 
-int bnxt_free_vnic(struct bnxt *bp, struct bnxt_vnic_info *vnic,
-			  int pool)
+int bnxt_free_vnic(struct bnxt *bp,
+		   struct bnxt_vnic_info *vnic,
+		   int pool)
 {
 	struct bnxt_vnic_info *temp;
 
@@ -141,13 +142,15 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	struct rte_pci_device *pdev = bp->pdev;
 	const struct rte_memzone *mz;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
-	uint32_t entry_length = RTE_CACHE_LINE_ROUNDUP(
-				HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table) +
-				HW_HASH_KEY_SIZE +
-				BNXT_MAX_MC_ADDRS * ETHER_ADDR_LEN);
+	uint32_t entry_length;
 	uint16_t max_vnics;
 	int i;
 	rte_iova_t mz_phys_addr;
+
+	entry_length = RTE_CACHE_LINE_ROUNDUP
+			(HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table) +
+			 HW_HASH_KEY_SIZE +
+			 BNXT_MAX_MC_ADDRS * ETHER_ADDR_LEN);
 
 	max_vnics = bp->max_vnics;
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
@@ -166,14 +169,11 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	}
 	mz_phys_addr = mz->iova;
 	if ((unsigned long)mz->addr == mz_phys_addr) {
-		PMD_DRV_LOG(WARNING,
-			"Memzone physical address same as virtual.\n");
-		PMD_DRV_LOG(WARNING,
-			"Using rte_mem_virt2iova()\n");
+		PMD_DRV_LOG(WARNING, "Memzone phys addr == virtual\n");
+		PMD_DRV_LOG(WARNING, "Using rte_mem_virt2iova()\n");
 		mz_phys_addr = rte_mem_virt2iova(mz->addr);
 		if (mz_phys_addr == 0) {
-			PMD_DRV_LOG(ERR,
-			"unable to map vnic address to physical memory\n");
+			PMD_DRV_LOG(ERR, "unable to map vnic addr\n");
 			return -ENOMEM;
 		}
 	}
@@ -232,7 +232,7 @@ int bnxt_alloc_vnic_mem(struct bnxt *bp)
 	vnic_mem = rte_zmalloc("bnxt_vnic_info",
 			       max_vnics * sizeof(struct bnxt_vnic_info), 0);
 	if (vnic_mem == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d VNICs",
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d VNICs\n",
 			max_vnics);
 		return -ENOMEM;
 	}
