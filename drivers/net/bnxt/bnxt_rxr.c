@@ -73,7 +73,6 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 	if (rx_buf == NULL)
 		PMD_DRV_LOG(ERR, "Jumbo Frame. rx_buf is NULL\n");
 
-
 	rx_buf->mbuf = mbuf;
 
 	rxbd->addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
@@ -82,7 +81,7 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 }
 
 static inline void bnxt_reuse_rx_mbuf(struct bnxt_rx_ring_info *rxr,
-			       struct rte_mbuf *mbuf)
+				      struct rte_mbuf *mbuf)
 {
 	uint16_t prod = RING_NEXT(rxr->rx_ring_struct, rxr->rx_prod);
 	struct bnxt_sw_rx_bd *prod_rx_buf;
@@ -185,7 +184,8 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 }
 
 static int bnxt_agg_bufs_valid(struct bnxt_cp_ring_info *cpr,
-		uint8_t agg_bufs, uint32_t raw_cp_cons)
+			       uint8_t agg_bufs,
+			       uint32_t raw_cp_cons)
 {
 	uint16_t last_cp_cons;
 	struct rx_pkt_cmpl *agg_cmpl;
@@ -236,8 +236,7 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 		struct rte_mbuf *ag_mbuf;
 		*tmp_raw_cons = NEXT_RAW_CMP(*tmp_raw_cons);
 		cp_cons = RING_CMP(cpr->cp_ring_struct, *tmp_raw_cons);
-		rxcmp = (struct rx_pkt_cmpl *)
-					&cpr->cp_desc_ring[cp_cons];
+		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cp_cons];
 
 #ifdef BNXT_DEBUG
 		bnxt_dump_cmpl(cp_cons, rxcmp);
@@ -270,11 +269,11 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 	return 0;
 }
 
-static inline struct rte_mbuf *bnxt_tpa_end(
-		struct bnxt_rx_queue *rxq,
-		uint32_t *raw_cp_cons,
-		struct rx_tpa_end_cmpl *tpa_end,
-		struct rx_tpa_end_cmpl_hi *tpa_end1 __rte_unused)
+static inline
+struct rte_mbuf *bnxt_tpa_end(struct bnxt_rx_queue *rxq,
+			      uint32_t *raw_cp_cons,
+			      struct rx_tpa_end_cmpl *tpa_end,
+			      struct rx_tpa_end_cmpl_hi *tpa_end1 __rte_unused)
 {
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
@@ -299,6 +298,7 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	mbuf->l4_len = tpa_end->payload_offset;
 
 	struct rte_mbuf *new_data = __bnxt_alloc_rx_data(rxq->mb_pool);
+
 	RTE_ASSERT(new_data != NULL);
 	if (!new_data) {
 		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
@@ -368,7 +368,8 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 }
 
 static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
-			    struct bnxt_rx_queue *rxq, uint32_t *raw_cons)
+		       struct bnxt_rx_queue *rxq,
+		       uint32_t *raw_cons)
 {
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
@@ -401,14 +402,16 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 
 	cmp_type = CMP_TYPE(rxcmp);
 	if (cmp_type == RX_TPA_START_CMPL_TYPE_RX_TPA_START) {
-		bnxt_tpa_start(rxq, (struct rx_tpa_start_cmpl *)rxcmp,
+		bnxt_tpa_start(rxq,
+			       (struct rx_tpa_start_cmpl *)rxcmp,
 			       (struct rx_tpa_start_cmpl_hi *)rxcmp1);
 		rc = -EINVAL; /* Continue w/o new mbuf */
 		goto next_rx;
 	} else if (cmp_type == RX_TPA_END_CMPL_TYPE_RX_TPA_END) {
-		mbuf = bnxt_tpa_end(rxq, &tmp_raw_cons,
-				   (struct rx_tpa_end_cmpl *)rxcmp,
-				   (struct rx_tpa_end_cmpl_hi *)rxcmp1);
+		mbuf = bnxt_tpa_end(rxq,
+				    &tmp_raw_cons,
+				    (struct rx_tpa_end_cmpl *)rxcmp,
+				    (struct rx_tpa_end_cmpl_hi *)rxcmp1);
 		if (unlikely(!mbuf))
 			return -EBUSY;
 		*rx_pkt = mbuf;
@@ -521,8 +524,9 @@ next_rx:
 	return rc;
 }
 
-uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-			       uint16_t nb_pkts)
+uint16_t bnxt_recv_pkts(void *rx_queue,
+			struct rte_mbuf **rx_pkts,
+			uint16_t nb_pkts)
 {
 	struct bnxt_rx_queue *rxq = rx_queue;
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
@@ -661,8 +665,8 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	rxq->rx_ring = rxr;
 
 	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
-				   sizeof(struct bnxt_ring),
-				   RTE_CACHE_LINE_SIZE, socket_id);
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
 	if (ring == NULL)
 		return -ENOMEM;
 	rxr->rx_ring_struct = ring;
@@ -681,8 +685,8 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	rxq->cp_ring = cpr;
 
 	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
-				   sizeof(struct bnxt_ring),
-				   RTE_CACHE_LINE_SIZE, socket_id);
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
 	if (ring == NULL)
 		return -ENOMEM;
 	cpr->cp_ring_struct = ring;
@@ -696,8 +700,8 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 
 	/* Allocate Aggregator rings */
 	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
-				   sizeof(struct bnxt_ring),
-				   RTE_CACHE_LINE_SIZE, socket_id);
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
 	if (ring == NULL)
 		return -ENOMEM;
 	rxr->ag_ring_struct = ring;
@@ -749,8 +753,8 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	for (i = 0; i < ring->ring_size; i++) {
 		if (bnxt_alloc_rx_data(rxq, rxr, prod) != 0) {
 			PMD_DRV_LOG(WARNING,
-				"init'ed rx ring %d with %d/%d mbufs only\n",
-				rxq->queue_id, i, ring->ring_size);
+				    "rx ring %d only has %d/%d mbufs\n",
+				    rxq->queue_id, i, ring->ring_size);
 			break;
 		}
 		rxr->rx_prod = prod;
@@ -765,8 +769,8 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	for (i = 0; i < ring->ring_size; i++) {
 		if (bnxt_alloc_ag_data(rxq, rxr, prod) != 0) {
 			PMD_DRV_LOG(WARNING,
-			"init'ed AG ring %d with %d/%d mbufs only\n",
-			rxq->queue_id, i, ring->ring_size);
+				    "AG ring %d only has %d/%d mbufs\n",
+				    rxq->queue_id, i, ring->ring_size);
 			break;
 		}
 		rxr->ag_prod = prod;
