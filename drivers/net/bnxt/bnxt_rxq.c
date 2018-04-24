@@ -82,8 +82,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			/* For each pool, allocate MACVLAN CFA rule & VNIC */
 			max_pools = RTE_MIN(bp->max_vnics,
 					    RTE_MIN(bp->max_l2_ctx,
-					    RTE_MIN(bp->max_rsscos_ctx,
-						    ETH_64_POOLS)));
+						    RTE_MIN(bp->max_rsscos_ctx,
+							    ETH_64_POOLS)));
 			if (pools > max_pools)
 				pools = max_pools;
 			break;
@@ -277,11 +277,11 @@ void bnxt_rx_queue_release_op(void *rx_queue)
 }
 
 int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
-			       uint16_t queue_idx,
-			       uint16_t nb_desc,
-			       unsigned int socket_id,
-			       const struct rte_eth_rxconf *rx_conf,
-			       struct rte_mempool *mp)
+			   uint16_t queue_idx,
+			   uint16_t nb_desc,
+			   unsigned int socket_id,
+			   const struct rte_eth_rxconf *rx_conf,
+			   struct rte_mempool *mp)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
@@ -333,8 +333,12 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	eth_dev->data->rx_queues[queue_idx] = rxq;
 	/* Allocate RX ring hardware descriptors */
-	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq->rx_ring, rxq->cp_ring,
-			"rxr")) {
+	if (bnxt_alloc_rings(bp,
+			     queue_idx,
+			     NULL,
+			     rxq->rx_ring,
+			     rxq->cp_ring,
+			     "rxr")) {
 		PMD_DRV_LOG(ERR,
 			"ring_dma_zone_reserve for rx_ring failed!\n");
 		bnxt_rx_queue_release_op(rxq);

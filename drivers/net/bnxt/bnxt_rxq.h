@@ -42,12 +42,14 @@ struct bnxt_rx_queue {
 void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq);
 int bnxt_mq_rx_configure(struct bnxt *bp);
 void bnxt_rx_queue_release_op(void *rx_queue);
+
 int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
-			       uint16_t queue_idx,
-			       uint16_t nb_desc,
-			       unsigned int socket_id,
-			       const struct rte_eth_rxconf *rx_conf,
-			       struct rte_mempool *mp);
+			   uint16_t queue_idx,
+			   uint16_t nb_desc,
+			   unsigned int socket_id,
+			   const struct rte_eth_rxconf *rx_conf,
+			   struct rte_mempool *mp);
+
 void bnxt_free_rx_mbufs(struct bnxt *bp);
 int bnxt_rx_queue_intr_enable_op(struct rte_eth_dev *eth_dev,
 				 uint16_t queue_id);
