@@ -201,7 +201,7 @@ void bnxt_free_stats(struct bnxt *bp)
 }
 
 int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
-			   struct rte_eth_stats *bnxt_stats)
+		      struct rte_eth_stats *bnxt_stats)
 {
 	int rc = 0;
 	unsigned int i;
@@ -217,8 +217,11 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 
-		rc = bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i,
-				     bnxt_stats, 1);
+		rc = bnxt_hwrm_ctx_qstats(bp,
+					  cpr->hw_stats_ctx_id,
+					  i,
+					  bnxt_stats,
+					  1);
 		if (unlikely(rc))
 			return rc;
 	}
@@ -227,8 +230,12 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 
-		rc = bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i,
-				     bnxt_stats, 0);
+		rc = bnxt_hwrm_ctx_qstats(bp,
+					  cpr->hw_stats_ctx_id,
+					  i,
+					  bnxt_stats,
+					  0);
+
 		if (unlikely(rc))
 			return rc;
 	}
@@ -253,7 +260,8 @@ void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 }
 
 int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
-			   struct rte_eth_xstat *xstats, unsigned int n)
+			   struct rte_eth_xstat *xstats,
+			   unsigned int n)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 
@@ -277,17 +285,21 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	count = 0;
 	for (i = 0; i < RTE_DIM(bnxt_rx_stats_strings); i++) {
 		uint64_t *rx_stats = (uint64_t *)bp->hw_rx_port_stats;
-		xstats[count].value = rte_le_to_cpu_64(
-				*(uint64_t *)((char *)rx_stats +
-				bnxt_rx_stats_strings[i].offset));
+
+		xstats[count].value = rte_le_to_cpu_64
+					(*(uint64_t *)((char *)rx_stats +
+					 bnxt_rx_stats_strings[i].offset));
+
 		count++;
 	}
 
 	for (i = 0; i < RTE_DIM(bnxt_tx_stats_strings); i++) {
 		uint64_t *tx_stats = (uint64_t *)bp->hw_tx_port_stats;
-		xstats[count].value = rte_le_to_cpu_64(
-				 *(uint64_t *)((char *)tx_stats +
-				bnxt_tx_stats_strings[i].offset));
+
+		xstats[count].value = rte_le_to_cpu_64
+					(*(uint64_t *)((char *)tx_stats +
+					 bnxt_tx_stats_strings[i].offset));
+
 		count++;
 	}
 
@@ -299,8 +311,8 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 }
 
 int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
-	struct rte_eth_xstat_name *xstats_names,
-	__rte_unused unsigned int limit)
+				 struct rte_eth_xstat_name *xstats_names,
+				 __rte_unused unsigned int limit)
 {
 	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
@@ -312,24 +324,27 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 
 		for (i = 0; i < RTE_DIM(bnxt_rx_stats_strings); i++) {
 			snprintf(xstats_names[count].name,
-				sizeof(xstats_names[count].name),
-				"%s",
-				bnxt_rx_stats_strings[i].name);
+				 sizeof(xstats_names[count].name),
+				 "%s",
+				 bnxt_rx_stats_strings[i].name);
+
 			count++;
 		}
 
 		for (i = 0; i < RTE_DIM(bnxt_tx_stats_strings); i++) {
 			snprintf(xstats_names[count].name,
-				sizeof(xstats_names[count].name),
-				"%s",
-				bnxt_tx_stats_strings[i].name);
+				 sizeof(xstats_names[count].name),
+				 "%s",
+				 bnxt_tx_stats_strings[i].name);
+
 			count++;
 		}
 
 		snprintf(xstats_names[count].name,
-				sizeof(xstats_names[count].name),
-				"%s",
-				bnxt_func_stats_strings[4].name);
+			 sizeof(xstats_names[count].name),
+			 "%s",
+			 bnxt_func_stats_strings[4].name);
+
 		count++;
 	}
 	return stat_cnt;
@@ -350,8 +365,10 @@ void bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(ERR, "Operation not supported\n");
 }
 
-int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
-		uint64_t *values, unsigned int limit)
+int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev,
+				 const uint64_t *ids,
+				 uint64_t *values,
+				 unsigned int limit)
 {
 	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
@@ -366,7 +383,7 @@ int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
 	bnxt_dev_xstats_get_by_id_op(dev, NULL, values_copy, stat_cnt);
 	for (i = 0; i < limit; i++) {
 		if (ids[i] >= stat_cnt) {
-			PMD_DRV_LOG(ERR, "id value isn't valid");
+			PMD_DRV_LOG(ERR, "id value isn't valid\n");
 			return -1;
 		}
 		values[i] = values_copy[ids[i]];
@@ -375,8 +392,9 @@ int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
 }
 
 int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
-				struct rte_eth_xstat_name *xstats_names,
-				const uint64_t *ids, unsigned int limit)
+				       struct rte_eth_xstat_name *xstats_names,
+				       const uint64_t *ids,
+				       unsigned int limit)
 {
 	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
@@ -387,16 +405,18 @@ int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
 	if (!ids)
 		return bnxt_dev_xstats_get_names_op(dev, xstats_names,
 						    stat_cnt);
-	bnxt_dev_xstats_get_names_by_id_op(dev, xstats_names_copy, NULL,
-			stat_cnt);
+
+	bnxt_dev_xstats_get_names_by_id_op(dev,
+					   xstats_names_copy,
+					   NULL,
+					   stat_cnt);
 
 	for (i = 0; i < limit; i++) {
 		if (ids[i] >= stat_cnt) {
-			PMD_DRV_LOG(ERR, "id value isn't valid");
+			PMD_DRV_LOG(ERR, "id value isn't valid\n");
 			return -1;
 		}
-		strcpy(xstats_names[i].name,
-				xstats_names_copy[ids[i]].name);
+		strcpy(xstats_names[i].name, xstats_names_copy[ids[i]].name);
 	}
 	return stat_cnt;
 }
