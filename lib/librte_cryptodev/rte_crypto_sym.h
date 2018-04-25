@@ -78,6 +78,12 @@ enum rte_crypto_cipher_algorithm {
 	 * for m_src and m_dst in the rte_crypto_sym_op must be NULL.
 	 */
 
+	RTE_CRYPTO_CIPHER_DES_ECB,
+	/**< DES algorithm in ECB mode */
+
+	RTE_CRYPTO_CIPHER_AES_OFB,
+	/**< AES algorithm in OFB mode */
+
 	RTE_CRYPTO_CIPHER_LIST_END
 
 };
