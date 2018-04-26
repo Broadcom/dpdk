@@ -155,8 +155,12 @@ err_ret:
  *
  * HWRM_UNLOCK() must be called after all response processing is completed.
  */
+
+#define HWRM_LOCK()		rte_spinlock_lock(&bp->hwrm_lock)
+#define HWRM_UNLOCK()		rte_spinlock_unlock(&bp->hwrm_lock)
+
 #define HWRM_PREP(req, type) do { \
-	rte_spinlock_lock(&bp->hwrm_lock); \
+	HWRM_LOCK(); \
 	memset(bp->hwrm_cmd_resp_addr, 0, bp->max_resp_len); \
 	req.req_type = rte_cpu_to_le_16(HWRM_##type); \
 	req.cmpl_ring = rte_cpu_to_le_16(-1); \
@@ -168,7 +172,7 @@ err_ret:
 #define HWRM_CHECK_RESULT() do {\
 	if (rc) { \
 		PMD_DRV_LOG(ERR, "failed rc:%d\n", rc); \
-		rte_spinlock_unlock(&bp->hwrm_lock); \
+		HWRM_UNLOCK(); \
 		if (rc > 0) \
 			rc = -EINVAL; \
 		return rc; \
@@ -188,14 +192,25 @@ err_ret:
 		} else { \
 			PMD_DRV_LOG(ERR, "error %d\n", rc); \
 		} \
-		rte_spinlock_unlock(&bp->hwrm_lock); \
+		HWRM_UNLOCK(); \
 		if (rc > 0) \
 			rc = -EINVAL; \
 		return rc; \
 	} \
 } while (0)
 
-#define HWRM_UNLOCK()		rte_spinlock_unlock(&bp->hwrm_lock)
+#define HWRM_CHECK_RESULT_NO_LOGGING \
+	{ \
+		if (rc) { \
+			HWRM_UNLOCK(); \
+			return rc; \
+		} \
+		if (resp->error_code) { \
+			rc = rte_le_to_cpu_16(resp->error_code); \
+			HWRM_UNLOCK(); \
+			return rc; \
+		} \
+	}
 
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
