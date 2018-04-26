@@ -73,6 +73,8 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 		return -ENOMEM;
 	}
 
+	data->data_off = RTE_PKTMBUF_HEADROOM;
+
 	rx_buf->mbuf = data;
 
 	rxbd->address = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR(rx_buf->mbuf));
@@ -102,6 +104,7 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 
 	rx_buf->mbuf = data;
 
+	data->data_off = RTE_PKTMBUF_HEADROOM;
 	rxbd->address = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR(rx_buf->mbuf));
 
 	return 0;
