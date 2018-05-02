@@ -4366,111 +4366,277 @@ struct hwrm_vnic_cfg_output {
 	 */
 } __attribute__((packed));
 
+/*******************
+ * hwrm_vnic_qcaps *
+ *******************/
+
+
+/* hwrm_vnic_qcaps_input (size:192b/24B) */
+struct hwrm_vnic_qcaps_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	enables;
+	uint8_t	unused_0[4];
+} __attribute__((packed));
+
+/* hwrm_vnic_qcaps_output (size:192b/24B) */
+struct hwrm_vnic_qcaps_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* The maximum receive unit that is settable on a vnic. */
+	uint16_t	mru;
+	uint8_t	unused_0[2];
+	uint32_t	flags;
+	/* Unused. */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_UNUSED \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', the capability of stripping VLAN in
+	 * the RX path is supported on VNIC(s).
+	 * If set to '0', then VLAN stripping capability is
+	 * not supported on VNIC(s).
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_VLAN_STRIP_CAP \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', the capability to buffer receive
+	 * packets in the hardware until the host posts new receive buffers
+	 * is supported on VNIC(s).
+	 * If set to '0', then bd_stall capability is not supported
+	 * on VNIC(s).
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_BD_STALL_CAP \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '1', the capability to
+	 * receive both RoCE and non-RoCE traffic on VNIC(s) is
+	 * supported.
+	 * If set to '0', then the capability to receive
+	 * both RoCE and non-RoCE traffic on VNIC(s) is
+	 * not supported.
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_ROCE_DUAL_VNIC_CAP \
+		UINT32_C(0x8)
+	/*
+	 * When this bit is set to '1', the capability to configure
+	 * a VNIC to receive only RoCE traffic is supported.
+	 * When this flag is set to '0', the VNIC capability to
+	 * configure to receive only RoCE traffic is not supported.
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_ROCE_ONLY_VNIC_CAP \
+		UINT32_C(0x10)
+	/*
+	 * When this bit is set to '1', then the capability to enable
+	 * a VNIC in a mode where RSS context without configuring
+	 * RSS indirection table is supported (for RSS hash computation).
+	 * When this bit is set to '0', then a VNIC can not be configured
+	 * with a mode to enable RSS context without configuring RSS
+	 * indirection table.
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RSS_DFLT_CR_CAP \
+		UINT32_C(0x20)
+	/*
+	 * When this bit is '1', the capability to
+	 * mirror the the RoCE traffic is supported.
+	 * If set to '0', then the capability to mirror the
+	 * RoCE traffic is not supported.
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_ROCE_MIRRORING_CAPABLE_VNIC_CAP \
+		UINT32_C(0x40)
+	/*
+	 * When this bit is '1', the outermost RSS hashing capability
+	 * is supported. If set to '0', then the outermost RSS hashing
+	 * capability is not supported.
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_OUTERMOST_RSS_CAP \
+		UINT32_C(0x80)
+	uint8_t	unused_1[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __attribute__((packed));
+
 /* hwrm_vnic_rss_cfg */
 /* Description: This function is used to enable RSS configuration. */
 /* Input (48 bytes) */
 struct hwrm_vnic_rss_cfg_input {
-	uint16_t req_type;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
 	/*
-	 * This value indicates what type of request this is. The format
-	 * for the rest of the command is determined by this field.
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
 	 */
-	uint16_t cmpl_ring;
+	uint16_t	cmpl_ring;
 	/*
-	 * This value indicates the what completion ring the request
-	 * will be optionally completed on. If the value is -1, then no
-	 * CR completion will be generated. Any other value must be a
-	 * valid CR ring_id value for this function.
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
 	 */
-	uint16_t seq_id;
-	/* This value indicates the command sequence number. */
-	uint16_t target_id;
+	uint16_t	seq_id;
 	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
-	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
-	 * - HWRM
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
 	 */
-	uint64_t resp_addr;
+	uint16_t	target_id;
 	/*
-	 * This is the host address where the response will be written
-	 * when the request is complete. This area must be 16B aligned
-	 * and must be cleared to zero before the request is made.
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
 	 */
-	uint32_t hash_type;
+	uint64_t	resp_addr;
+	uint32_t	hash_type;
 	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source and destination IPv4 addresses of IPv4 packets.
+	 * When this bit is '1', the RSS hash shall be computed
+	 * over source and destination IPv4 addresses of IPv4
+	 * packets.
 	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4	UINT32_C(0x1)
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4         UINT32_C(0x1)
 	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source/destination IPv4 addresses and source/destination
-	 * ports of TCP/IPv4 packets.
+	 * When this bit is '1', the RSS hash shall be computed
+	 * over source/destination IPv4 addresses and
+	 * source/destination ports of TCP/IPv4 packets.
 	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4	UINT32_C(0x2)
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4     UINT32_C(0x2)
 	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source/destination IPv4 addresses and source/destination
-	 * ports of UDP/IPv4 packets.
+	 * When this bit is '1', the RSS hash shall be computed
+	 * over source/destination IPv4 addresses and
+	 * source/destination ports of UDP/IPv4 packets.
 	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4	UINT32_C(0x4)
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4     UINT32_C(0x4)
 	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source and destination IPv4 addresses of IPv6 packets.
+	 * When this bit is '1', the RSS hash shall be computed
+	 * over source and destination IPv4 addresses of IPv6
+	 * packets.
 	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6	UINT32_C(0x8)
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6         UINT32_C(0x8)
 	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source/destination IPv6 addresses and source/destination
-	 * ports of TCP/IPv6 packets.
+	 * When this bit is '1', the RSS hash shall be computed
+	 * over source/destination IPv6 addresses and
+	 * source/destination ports of TCP/IPv6 packets.
 	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6	UINT32_C(0x10)
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6     UINT32_C(0x10)
 	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source/destination IPv6 addresses and source/destination
-	 * ports of UDP/IPv6 packets.
+	 * When this bit is '1', the RSS hash shall be computed
+	 * over source/destination IPv6 addresses and
+	 * source/destination ports of UDP/IPv6 packets.
 	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6	UINT32_C(0x20)
-	uint32_t unused_0;
-	uint64_t ring_grp_tbl_addr;
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6     UINT32_C(0x20)
+	/* VNIC ID of VNIC associated with RSS table being configured. */
+	uint16_t	vnic_id;
+	/*
+	 * Specifies which VNIC ring table pair to configure.
+	 * Valid values range from 0 to 7.
+	 */
+	uint8_t	ring_table_pair_index;
+	/* Flags to specify different RSS hash modes. */
+	uint8_t	hash_mode_flags;
+	/*
+	 * When this bit is '1', it indicates using current RSS
+	 * hash mode setting configured in the device.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_DEFAULT \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', it indicates requesting support of
+	 * RSS hashing over innermost 4 tuples {l3.src, l3.dest,
+	 * l4.src, l4.dest} for tunnel packets. For none-tunnel
+	 * packets, the RSS hash is computed over the normal
+	 * src/dest l3 and src/dest l4 headers.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_INNERMOST_4 \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', it indicates requesting support of
+	 * RSS hashing over innermost 2 tuples {l3.src, l3.dest} for
+	 * tunnel packets. For none-tunnel packets, the RSS hash is
+	 * computed over the normal src/dest l3 headers.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_INNERMOST_2 \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '1', it indicates requesting support of
+	 * RSS hashing over outermost 4 tuples {t_l3.src, t_l3.dest,
+	 * t_l4.src, t_l4.dest} for tunnel packets. For none-tunnel
+	 * packets, the RSS hash is computed over the normal
+	 * src/dest l3 and src/dest l4 headers.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_OUTERMOST_4 \
+		UINT32_C(0x8)
+	/*
+	 * When this bit is '1', it indicates requesting support of
+	 * RSS hashing over outermost 2 tuples {t_l3.src, t_l3.dest} for
+	 * tunnel packets. For none-tunnel packets, the RSS hash is
+	 * computed over the normal src/dest l3 headers.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_OUTERMOST_2 \
+		UINT32_C(0x10)
 	/* This is the address for rss ring group table */
-	uint64_t hash_key_tbl_addr;
+	uint64_t	ring_grp_tbl_addr;
 	/* This is the address for rss hash key table */
-	uint16_t rss_ctx_idx;
+	uint64_t	hash_key_tbl_addr;
 	/* Index to the rss indirection table. */
-	uint16_t unused_1[3];
+	uint16_t	rss_ctx_idx;
+	uint8_t	unused_1[6];
 } __attribute__((packed));
 
 /* Output (16 bytes) */
 struct hwrm_vnic_rss_cfg_output {
-	uint16_t error_code;
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
 	/*
-	 * Pass/Fail or error type Note: receiver to verify the in
-	 * parameters, and fail the call with an error when appropriate
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
 	 */
-	uint16_t req_type;
-	/* This field returns the type of original request. */
-	uint16_t seq_id;
-	/* This field provides original sequence number of the command. */
-	uint16_t resp_len;
-	/*
-	 * This field is the length of the response in bytes. The last
-	 * byte of the response is a valid flag that will read as '1'
-	 * when the command has been completely written to memory.
-	 */
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-	uint8_t valid;
-	/*
-	 * This field is used in Output records to indicate that the
-	 * output is completely written to RAM. This field should be
-	 * read as '1' to indicate that the output has been completely
-	 * written. When writing a command completion or response to an
-	 * internal processor, the order of writes has to be such that
-	 * this field is written last.
-	 */
+	uint8_t	valid;
 } __attribute__((packed));
 
 /* hwrm_vnic_rss_cos_lb_ctx_alloc */

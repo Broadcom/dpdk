@@ -52,6 +52,7 @@ struct bnxt_vnic_info {
 	uint16_t	end_grp_id;
 	uint16_t	fw_grp_ids[MAX_QUEUES_PER_VNIC];
 	uint16_t	hash_type;
+	uint8_t		hash_mode;
 	phys_addr_t	rss_table_dma_addr;
 	uint16_t	*rss_table;
 	phys_addr_t	rss_hash_key_dma_addr;

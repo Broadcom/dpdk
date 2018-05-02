@@ -968,7 +968,8 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 
 	HWRM_PREP(req, VNIC_RSS_CFG, -1, resp);
 
-	req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+	req.hash_type = rte_cpu_to_le_16(vnic->hash_type);
+	req.hash_mode_flags = vnic->hash_mode;
 
 	req.ring_grp_tbl_addr =
 	    rte_cpu_to_le_64(vnic->rss_table_dma_addr);
