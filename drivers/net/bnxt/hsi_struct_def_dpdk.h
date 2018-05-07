@@ -1318,6 +1318,115 @@ struct output {
 	 */
 } __attribute__((packed));
 
+/* Short Command Structure (16 bytes) */
+struct hwrm_short_input {
+	uint16_t req_type;
+	uint16_t signature;
+	#define HWRM_SHORT_REQ_SIGNATURE_SHORT_CMD	(UINT32_C(0x4321))
+	uint16_t unused_0;
+	uint16_t size;
+	uint64_t req_addr;
+} __attribute__((packed));
+
+#define HWRM_GET_HWRM_ERROR_CODE(arg) \
+	{ \
+		typeof(arg) x = (arg); \
+	((x) == 0xf ? "HWRM_ERROR" : \
+	((x) == 0xffff ? "CMD_NOT_SUPPORTED" : \
+	((x) == 0xfffe ? "UNKNOWN_ERR" : \
+	((x) == 0x4 ? "RESOURCE_ALLOC_ERROR" : \
+	((x) == 0x5 ? "INVALID_FLAGS" : \
+	((x) == 0x6 ? "INVALID_ENABLES" : \
+	((x) == 0x0 ? "SUCCESS" : \
+	((x) == 0x1 ? "FAIL" : \
+	((x) == 0x2 ? "INVALID_PARAMS" : \
+	((x) == 0x3 ? "RESOURCE_ACCESS_DENIED" : \
+	"Unknown error_code")))))))))) \
+	}
+
+/* Return Codes	(8 bytes) */
+struct ret_codes {
+	uint16_t error_code;
+	/* These are numbers assigned to return/error codes. */
+	/* Request was successfully executed by the HWRM. */
+	#define HWRM_ERR_CODE_SUCCESS	(UINT32_C(0x0))
+	/* THe HWRM failed to execute the request. */
+	#define HWRM_ERR_CODE_FAIL	(UINT32_C(0x1))
+	/*
+	 * The request contains invalid argument(s) or
+	 * input parameters.
+	 */
+	#define HWRM_ERR_CODE_INVALID_PARAMS	(UINT32_C(0x2))
+	/*
+	 * The requester is not allowed to access the
+	 * requested resource. This error code shall be
+	 * provided in a response to a request to query
+	 * or modify an existing resource that is not
+	 * accessible by the requester.
+	 */
+	#define HWRM_ERR_CODE_RESOURCE_ACCESS_DENIED	(UINT32_C(0x3))
+	/*
+	 * The HWRM is unable to allocate the requested
+	 * resource. This code only applies to requests
+	 * for HWRM resource allocations.
+	 */
+	#define HWRM_ERR_CODE_RESOURCE_ALLOC_ERROR	(UINT32_C(0x4))
+	/* Invalid combination of flags is specified in the request. */
+	#define HWRM_ERR_CODE_INVALID_FLAGS	(UINT32_C(0x5))
+	/*
+	 * Invalid combination of enables fields is
+	 * specified in the request.
+	 */
+	#define HWRM_ERR_CODE_INVALID_ENABLES	(UINT32_C(0x6))
+	/*
+	 * Generic HWRM execution error that represents
+	 * an internal error.
+	 */
+	#define HWRM_ERR_CODE_HWRM_ERROR	(UINT32_C(0xf))
+	/* Unknown error */
+	#define HWRM_ERR_CODE_UNKNOWN_ERR	(UINT32_C(0xfffe))
+	/* Unsupported or invalid command */
+	#define HWRM_ERR_CODE_CMD_NOT_SUPPORTED	(UINT32_C(0xffff))
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output	(16 bytes) */
+struct hwrm_err_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t opaque_0;
+	/* debug info for this error response. */
+	uint16_t opaque_1;
+	/* debug info for this error response. */
+	uint8_t cmd_err;
+	/*
+	 * In the case of an error response, command specific error code
+	 * is returned in this field.
+	 */
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
 /* hwrm_ver_get */
 /*
  * Description: This function is called by a driver to determine the HWRM

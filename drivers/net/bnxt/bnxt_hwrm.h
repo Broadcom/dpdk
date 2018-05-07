@@ -104,4 +104,8 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp);
 #define HWRM_RING_ALLOC_INPUT_EN_STAT_CTX_ID_VALID \
 	HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID
 
+#ifndef rte_write32
+#define rte_write32(bar, data)	(*(volatile uint32_t *)(bar) = *(data))
+#endif
+
 #endif
