@@ -73,6 +73,8 @@
 
 #include "testpmd.h"
 
+static uint8_t broadcom_custom = 0;
+
 #define IP_DEFTTL  64   /* from RFC 1340. */
 #define IP_VERSION 0x40
 #define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
@@ -162,12 +164,15 @@ parse_ipv6(struct ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
  * header. The l4_len argument is only set in case of TCP (useful for TSO).
  */
 static void
-parse_ethernet(struct ether_hdr *eth_hdr, struct testpmd_offload_info *info)
+parse_ethernet(struct ether_hdr *eth_hdr, struct testpmd_offload_info *info, uint8_t is_vxlan_gpe)
 {
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
 
-	info->l2_len = sizeof(struct ether_hdr);
+	if (is_vxlan_gpe)
+		info->l2_len = 0;
+	else
+		info->l2_len = sizeof(struct ether_hdr);
 	info->ethertype = eth_hdr->ether_type;
 
 	if (info->ethertype == _htons(ETHER_TYPE_VLAN)) {
@@ -198,29 +203,41 @@ parse_ethernet(struct ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 static void
 parse_vxlan(struct udp_hdr *udp_hdr,
 	    struct testpmd_offload_info *info,
-	    uint32_t pkt_type)
+	    uint32_t pkt_type, uint8_t *is_vxlan_gpe)
 {
 	struct ether_hdr *eth_hdr;
 
 	/* check udp destination port, 4789 is the default vxlan port
 	 * (rfc7348) or that the rx offload flag is set (i40e only
 	 * currently) */
+	if (udp_hdr->dst_port == _htons(4790)) {
+		*is_vxlan_gpe = 1;
+		goto vxlan_gpe;
+	}
+
 	if (udp_hdr->dst_port != _htons(4789) &&
 		RTE_ETH_IS_TUNNEL_PKT(pkt_type) == 0)
 		return;
 
+vxlan_gpe:
 	info->is_tunnel = 1;
 	info->outer_ethertype = info->ethertype;
 	info->outer_l2_len = info->l2_len;
 	info->outer_l3_len = info->l3_len;
 	info->outer_l4_proto = info->l4_proto;
 
+	if (*is_vxlan_gpe)
+		goto no_eth_hdr;
+
 	eth_hdr = (struct ether_hdr *)((char *)udp_hdr +
 		sizeof(struct udp_hdr) +
 		sizeof(struct vxlan_hdr));
 
-	parse_ethernet(eth_hdr, info);
+	parse_ethernet(eth_hdr, info, *is_vxlan_gpe);
+
 	info->l2_len += ETHER_VXLAN_HLEN; /* add udp + vxlan */
+no_eth_hdr:
+	info->l2_len += 2; /* add udp + vxlan */
 }
 
 /* Parse a gre header */
@@ -276,7 +293,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 
 		eth_hdr = (struct ether_hdr *)((char *)gre_hdr + gre_len);
 
-		parse_ethernet(eth_hdr, info);
+		parse_ethernet(eth_hdr, info, 0);
 	} else
 		return;
 
@@ -341,6 +358,10 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 
 	if (info->ethertype == _htons(ETHER_TYPE_IPv4)) {
 		ipv4_hdr = l3_hdr;
+		//Force checksum calculation - Rx path and then reset it
+		//so that its calculated by the software before Tx.
+		if (broadcom_custom == 2)
+			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
 		ipv4_hdr->hdr_checksum = 0;
 
 		ol_flags |= PKT_TX_IPV4;
@@ -361,16 +382,23 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	if (info->l4_proto == IPPROTO_UDP) {
 		udp_hdr = (struct udp_hdr *)((char *)l3_hdr + info->l3_len);
 		/* do not recalculate udp cksum if it was 0 */
-		if (udp_hdr->dgram_cksum != 0) {
+		//if (udp_hdr->dgram_cksum != 0) {
+			// Force checksum calculation in SW - Rx path.
+			// Then reset to 0 - before Tx - for calculation in SW.
+			if (broadcom_custom == 2)
+				udp_hdr->dgram_cksum =
+					get_udptcp_checksum(l3_hdr, udp_hdr,
+						info->ethertype);
 			udp_hdr->dgram_cksum = 0;
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_UDP_CKSUM)
 				ol_flags |= PKT_TX_UDP_CKSUM;
 			else {
-				udp_hdr->dgram_cksum =
-					get_udptcp_checksum(l3_hdr, udp_hdr,
-						info->ethertype);
+				if (!broadcom_custom || broadcom_custom == 2)
+                    udp_hdr->dgram_cksum =
+                        get_udptcp_checksum(l3_hdr, udp_hdr,
+                            info->ethertype);
 			}
-		}
+		//}
 	} else if (info->l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + info->l3_len);
 		tcp_hdr->cksum = 0;
@@ -413,6 +441,10 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	uint64_t ol_flags = 0;
 
 	if (info->outer_ethertype == _htons(ETHER_TYPE_IPv4)) {
+		// Force checksum calculation in SW - Rx path.
+		// Then reset to 0 - before Tx - for calculation in SW.
+		if (broadcom_custom == 2)
+			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
 		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= PKT_TX_OUTER_IPV4;
 
@@ -440,6 +472,11 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	if (tso_enabled)
 		udp_hdr->dgram_cksum = 0;
 
+	// Set Outer UDP checksum to 0. And Transmit.
+	if (broadcom_custom) {
+		udp_hdr->dgram_cksum = 0;
+		goto done;
+	}
 	/* do not recalculate udp cksum if it was 0 */
 	if (udp_hdr->dgram_cksum != 0) {
 		udp_hdr->dgram_cksum = 0;
@@ -451,6 +488,7 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 				rte_ipv6_udptcp_cksum(ipv6_hdr, udp_hdr);
 	}
 
+done:
 	return ol_flags;
 }
 
@@ -653,6 +691,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	struct testpmd_offload_info info;
 	uint16_t nb_segments = 0;
 	int ret;
+	uint8_t is_vxlan_gpe = 0;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
@@ -679,6 +718,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 	txp = &ports[fs->tx_port];
 	testpmd_ol_flags = txp->tx_ol_flags;
+	broadcom_custom = txp->broadcom;
 	memset(&info, 0, sizeof(info));
 	info.tso_segsz = txp->tso_segsz;
 	info.tunnel_tso_segsz = txp->tunnel_tso_segsz;
@@ -691,6 +731,19 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 						       void *));
 
 		m = pkts_burst[i];
+		tx_ol_flags = 0;
+		rx_ol_flags = m->ol_flags;
+		if (broadcom_custom == 1) {
+			//broadcom_custom case
+			tx_ol_flags |= PKT_TX_UDP_CKSUM | PKT_TX_TUNNEL_VXLAN | 
+				//PKT_TX_IPV6 | 
+				PKT_TX_IP_CKSUM | PKT_TX_OUTER_IP_CKSUM |
+				PKT_TX_OUTER_IPV4;
+			m->ol_flags = tx_ol_flags;
+			RTE_LOG(DEBUG, PMD, "Enabling HW CSUM Offload\n");
+            nb_prep = nb_rx;
+			goto tx_pkt;
+		}
 		info.is_tunnel = 0;
 		info.pkt_len = rte_pktmbuf_pkt_len(m);
 		tx_ol_flags = 0;
@@ -710,7 +763,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				&eth_hdr->d_addr);
 		ether_addr_copy(&ports[fs->tx_port].eth_addr,
 				&eth_hdr->s_addr);
-		parse_ethernet(eth_hdr, &info);
+		parse_ethernet(eth_hdr, &info, 0);
 		l3_hdr = (char *)eth_hdr + info.l2_len;
 
 		/* check if it's a supported tunnel */
@@ -720,7 +773,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 				udp_hdr = (struct udp_hdr *)((char *)l3_hdr +
 					info.l3_len);
-				parse_vxlan(udp_hdr, &info, m->packet_type);
+				parse_vxlan(udp_hdr, &info, m->packet_type, &is_vxlan_gpe);
 				if (info.is_tunnel)
 					tx_ol_flags |= PKT_TX_TUNNEL_VXLAN;
 			} else if (info.l4_proto == IPPROTO_GRE) {
@@ -763,6 +816,10 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			tx_ol_flags |= process_outer_cksums(outer_l3_hdr, &info,
 					testpmd_ol_flags,
 					!!(tx_ol_flags & PKT_TX_TCP_SEG));
+		}
+		if (broadcom_custom) {
+            nb_prep = nb_rx;
+			goto tx_pkt;
 		}
 
 		/* step 3: fill the mbuf meta data (flags and header lengths) */
@@ -883,6 +940,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		}
 	}
 
+tx_pkt:
 	if (gso_ports[fs->tx_port].enable == 0)
 		tx_pkts_burst = pkts_burst;
 	else {

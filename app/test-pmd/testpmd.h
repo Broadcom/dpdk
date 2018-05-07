@@ -240,6 +240,7 @@ struct rte_port {
 	unsigned int			softnic_enable;	/**< softnic flag */
 	struct softnic_port     softport;  /**< softnic port params */
 #endif
+	uint16_t                broadcom;/** Broadcom custom VXLAN test mode */
 };
 
 /**
