@@ -26,6 +26,7 @@
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 #include "bnxt_nvm_defs.h"
+#include "bnxt_util.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -3299,7 +3300,7 @@ skip_init:
 		goto error_free;
 	}
 
-	if (check_zero_bytes(bp->dflt_mac_addr, ETHER_ADDR_LEN)) {
+	if (bnxt_check_zero_bytes(bp->dflt_mac_addr, ETHER_ADDR_LEN)) {
 		PMD_DRV_LOG(ERR,
 			    "Invalid MAC addr %02X:%02X:%02X:%02X:%02X:%02X\n",
 			    bp->dflt_mac_addr[0], bp->dflt_mac_addr[1],
