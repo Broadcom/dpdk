@@ -122,8 +122,8 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 			if (rc)
 				PMD_DRV_LOG(ERR,
-				       "HWRM filter cannot be freed rc = %d\n",
-					rc);
+					    "HWRM filter not freed rc = %d\n",
+					    rc);
 		}
 		filter->fw_l2_filter_id = UINT64_MAX;
 	}
@@ -144,7 +144,7 @@ int bnxt_alloc_filter_mem(struct bnxt *bp)
 				 max_filters * sizeof(struct bnxt_filter_info),
 				 0);
 	if (filter_mem == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d filters",
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d filters\n",
 			max_filters);
 		return -ENOMEM;
 	}
