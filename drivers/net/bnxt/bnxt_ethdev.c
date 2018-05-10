@@ -608,6 +608,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		goto error;
 
 	bnxt_link_update_op(eth_dev, 1);
+	bp->flags |= BNXT_FLAG_INIT_DONE;
 
 	if (eth_dev->data->dev_conf.rxmode.hw_vlan_filter)
 		vlan_mask |= ETH_VLAN_FILTER_MASK;
@@ -655,6 +656,8 @@ static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	bp->flags &= ~BNXT_FLAG_INIT_DONE;
 
 	if (bp->eth_dev->data->dev_started) {
 		/* TBD: STOP HW queues DMA */

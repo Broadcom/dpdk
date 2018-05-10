@@ -59,6 +59,8 @@
 
 #define BNXT_TPA_MAX		64
 #define AGG_RING_SIZE_FACTOR	2
+#define MAX_TPA		128
+#define AGG_RING_MULTIPLIER	2
 
 /* These assume 4k pages */
 #define MAX_RX_DESC_CNT (8 * 1024)
