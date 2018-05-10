@@ -1107,6 +1107,15 @@ init_err_disable:
 	return rc;
 }
 
+static int bnxt_check_zero_bytes(const uint8_t *bytes, int len)
+{
+	int i;                          
+	for (i = 0; i < len; i++)
+		if (bytes[i] != 0x00)
+			return 0;
+	return 1;       
+}               
+
 static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -1161,12 +1170,24 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		rc = -ENOMEM;
 		goto error_free;
 	}
+
 	/* Copy the permanent MAC from the qcap response address now. */
 	if (BNXT_PF(bp))
 		memcpy(bp->mac_addr, bp->pf.mac_addr, sizeof(bp->mac_addr));
 	else
 		memcpy(bp->mac_addr, bp->vf.mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
+
+	if (bnxt_check_zero_bytes(bp->mac_addr, ETHER_ADDR_LEN)) {
+		RTE_LOG(ERR, PMD,
+			    "Invalid MAC addr %02X:%02X:%02X:%02X:%02X:%02X\n",
+			    bp->mac_addr[0], bp->mac_addr[1],
+			    bp->mac_addr[2], bp->mac_addr[3],
+			    bp->mac_addr[4], bp->mac_addr[5]);
+		rc = -EINVAL;
+		goto error_free;
+	}
+
 	bp->grp_info = rte_zmalloc("bnxt_grp_info",
 				sizeof(*bp->grp_info) * bp->max_ring_grps, 0);
 	if (!bp->grp_info) {
