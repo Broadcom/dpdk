@@ -583,6 +583,7 @@ static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 	bnxt_set_hwrm_link_config(bp, false);
 	bp->link_info.link_up = 0;
 
+	bp->flags |= BNXT_FLAG_INIT_DONE;
 	return 0;
 }
 
@@ -590,6 +591,8 @@ static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	bp->flags &= ~BNXT_FLAG_INIT_DONE;
 
 	if (bp->eth_dev->data->dev_started) {
 		/* TBD: STOP HW queues DMA */
