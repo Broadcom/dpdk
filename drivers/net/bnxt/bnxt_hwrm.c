@@ -171,6 +171,9 @@ int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct hwrm_cfa_l2_set_rx_mask_input req = {.req_type = 0 };
 	struct hwrm_cfa_l2_set_rx_mask_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (vnic->fw_vnic_id == (uint16_t)HWRM_NA_SIGNATURE)
+		return 0;
+
 	HWRM_PREP(req, CFA_L2_SET_RX_MASK);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 	req.mask = 0;
