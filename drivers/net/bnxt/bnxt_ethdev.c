@@ -1362,6 +1362,15 @@ static int bnxt_vlan_filter_set_op(struct rte_eth_dev *eth_dev,
 		return bnxt_del_vlan_filter(bp, vlan_id);
 }
 
+static int bnxt_check_zero_bytes(const uint8_t *bytes, int len)
+{
+	int i;                          
+	for (i = 0; i < len; i++)
+		if (bytes[i] != 0x00)
+			return 0;
+	return 1;       
+}               
+
 static int
 bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 {
@@ -2964,6 +2973,7 @@ skip_init:
 		rc = -ENOMEM;
 		goto error_free;
 	}
+
 	/* Copy the permanent MAC from the qcap response address now. */
 	memcpy(bp->mac_addr, bp->dflt_mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
@@ -2972,6 +2982,15 @@ skip_init:
 		/* 1 ring is for default completion ring */
 		RTE_LOG(ERR, PMD, "Insufficient resource: Ring Group\n");
 		rc = -ENOSPC;
+    }
+
+	if (bnxt_check_zero_bytes(bp->mac_addr, ETHER_ADDR_LEN)) {
+		RTE_LOG(ERR, PMD,
+			    "Invalid MAC addr %02X:%02X:%02X:%02X:%02X:%02X\n",
+			    bp->mac_addr[0], bp->mac_addr[1],
+			    bp->mac_addr[2], bp->mac_addr[3],
+			    bp->mac_addr[4], bp->mac_addr[5]);
+		rc = -EINVAL;
 		goto error_free;
 	}
 
