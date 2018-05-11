@@ -407,6 +407,13 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp, uint32_t flags,
 
 	req.async_event_fwd[0] |= rte_cpu_to_le_32(0x1);   /* TODO: Use MACRO */
 
+	if (BNXT_PF(bp)) {
+		/* PF can sniff HWRM API from VF which set up by linux driver, clear HWRM
+		 * sniffer list because DPDK PF driver doesn't support to handle HWRM from vf.
+		 */
+		req.flags = rte_cpu_to_le_32(HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_FWD_NONE_MODE);
+	}
+
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT();
