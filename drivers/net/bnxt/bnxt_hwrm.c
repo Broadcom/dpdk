@@ -242,7 +242,7 @@ int bnxt_hwrm_clear_filter(struct bnxt *bp,
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
-	filter->fw_l2_filter_id = -1;
+	filter->fw_l2_filter_id = BNXT_NA_SIGNATURE_UINT64;
 
 	return 0;
 }
@@ -359,6 +359,8 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
 	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
 	bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
+	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
+	bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 	HWRM_UNLOCK();
 

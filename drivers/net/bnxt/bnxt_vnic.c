@@ -258,7 +258,7 @@ void bnxt_free_vnic_mem(struct bnxt *bp)
 int bnxt_alloc_vnic_mem(struct bnxt *bp)
 {
 	struct bnxt_vnic_info *vnic_mem;
-	uint16_t max_vnics;
+	uint16_t max_vnics, i;
 
 	if (BNXT_PF(bp)) {
 		struct bnxt_pf_info *pf = &bp->pf;
@@ -277,6 +277,11 @@ int bnxt_alloc_vnic_mem(struct bnxt *bp)
 			max_vnics);
 		return -ENOMEM;
 	}
+
 	bp->vnic_info = vnic_mem;
+
+	for (i = 0; i < bp->max_vnics; i++)
+		bp->vnic_info[i].fw_vnic_id = (uint16_t)HWRM_NA_SIGNATURE;
+
 	return 0;
 }

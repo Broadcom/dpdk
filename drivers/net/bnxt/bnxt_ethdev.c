@@ -544,6 +544,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	bnxt_enable_int(bp);
 
 	bnxt_link_update_op(eth_dev, 1);
+	bp->flags |= BNXT_FLAG_INIT_DONE;
 	return 0;
 
 error:
@@ -583,7 +584,6 @@ static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 	bnxt_set_hwrm_link_config(bp, false);
 	bp->link_info.link_up = 0;
 
-	bp->flags |= BNXT_FLAG_INIT_DONE;
 	return 0;
 }
 

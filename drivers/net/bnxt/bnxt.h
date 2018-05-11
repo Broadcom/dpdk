@@ -185,6 +185,8 @@ struct bnxt {
 	uint16_t		max_cp_rings;
 	uint16_t		max_tx_rings;
 	uint16_t		max_rx_rings;
+	uint16_t		max_l2_ctx;
+	uint16_t		max_vnics;
 	uint16_t		max_stat_ctx;
 
 	struct bnxt_link_info	link_info;
@@ -195,6 +197,8 @@ struct bnxt {
 	uint8_t			port_partition_type;
 	uint8_t			dev_stopped;
 };
+
+#define BNXT_NA_SIGNATURE_UINT64		((uint64_t)(-1))
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 
