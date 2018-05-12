@@ -46,6 +46,11 @@
 
 #define BNXT_MAX_MTU		9000
 #define VLAN_TAG_SIZE		4
+#define BNXT_VF_MAX_RSS_CTX		1
+#define BNXT_VF_MAX_L2_CTX		4
+/* TODO: For now, do not support VMDq/RFS on VFs. */
+#define BNXT_VF_MAX_VNIC		1
+#define BNXT_NA_SIGNATURE_UINT64		((uint64_t)(-1))
 
 enum bnxt_hw_context {
 	HW_CONTEXT_NONE     = 0,
@@ -140,6 +145,7 @@ struct bnxt {
 #define BNXT_FLAG_JUMBO		(1 << 3)
 #define BNXT_FLAG_SHORT_CMD	(1 << 4)
 #define BNXT_FLAG_UPDATE_HASH	(1 << 5)
+#define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1 << 31)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
@@ -176,12 +182,14 @@ struct bnxt {
 #define MAX_NUM_MAC_ADDR	32
 	uint8_t			mac_addr[ETHER_ADDR_LEN];
 
+	uint32_t			hwrm_spec_code;
 	uint16_t			hwrm_cmd_seq;
 	void				*hwrm_cmd_resp_addr;
 	phys_addr_t			hwrm_cmd_resp_dma_addr;
 	rte_spinlock_t			hwrm_lock;
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;
+	uint16_t		max_rsscos_ctx;
 	uint16_t		max_cp_rings;
 	uint16_t		max_tx_rings;
 	uint16_t		max_rx_rings;
@@ -196,6 +204,10 @@ struct bnxt {
 	struct bnxt_vf_info		vf;
 	uint8_t			port_partition_type;
 	uint8_t			dev_stopped;
+#define BNXT_VF_RESV_STRATEGY_MAXIMAL	0
+#define BNXT_VF_RESV_STRATEGY_MINIMAL	1
+#define BNXT_VF_RESV_STRATEGY_MINIMAL_STATIC	2
+	uint16_t		vf_resv_strategy;
 };
 
 #define BNXT_NA_SIGNATURE_UINT64		((uint64_t)(-1))

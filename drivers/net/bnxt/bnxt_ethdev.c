@@ -363,6 +363,10 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		max_vnics = bp->vf.max_vnics;
 	}
 	dev_info->hash_key_size = 40;
+	//dev_info->max_rx_queues = bp->max_rx_rings;
+	//dev_info->max_tx_queues = bp->max_tx_rings;
+	//dev_info->reta_size = bp->max_rsscos_ctx;
+	//max_vnics = bp->max_vnics;
 
 	/* Fast path specifics */
 	dev_info->min_rx_bufsize = 1;
@@ -451,6 +455,26 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
 
+	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
+	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
+
+	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
+		int rc;
+
+		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM resource alloc failure rc: %x\n", rc);
+			return -ENOSPC;
+		}
+
+		/* legacy DPDK needs to get updated values */
+		rc = bnxt_hwrm_func_qcaps(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "hwrm func qcaps failed. rc %d\n", rc);
+			return -ENOSPC;
+		}
+	}
+
 	/* Inherit new configurations */
 	if (eth_dev->data->nb_rx_queues > bp->max_rx_rings ||
 	    eth_dev->data->nb_tx_queues > bp->max_tx_rings ||
@@ -472,8 +496,6 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		return -ENOSPC;
 	}
 
-	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
-	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
 	bp->tx_cp_nr_rings = bp->tx_nr_rings;
 
@@ -543,7 +565,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	bnxt_enable_int(bp);
 
-	bnxt_link_update_op(eth_dev, 1);
+	bnxt_link_update_op(eth_dev, 0);
 	bp->flags |= BNXT_FLAG_INIT_DONE;
 	return 0;
 
@@ -1244,6 +1266,26 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		DRV_MODULE_NAME " found at mem %" PRIx64 ", node addr %pM\n",
 		eth_dev->pci_dev->mem_resource[0].phys_addr,
 		eth_dev->pci_dev->mem_resource[0].addr);
+
+	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
+		int rc;
+
+		bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
+		bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
+
+		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM resource alloc failure rc: %x\n", rc);
+			return -ENOSPC;
+		}
+
+		/* legacy DPDK needs to get updated values */
+		rc = bnxt_hwrm_func_qcaps(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "hwrm func qcaps failed. rc %d\n", rc);
+			return -ENOSPC;
+		}
+	}
 
 	bp->dev_stopped = 0;
 
