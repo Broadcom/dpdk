@@ -60,9 +60,19 @@
 	    (((rxcmp1)->flags2 & RX_CMP_L4_CS_BITS) &&		\
 	     !((rxcmp1)->errors_v2 & RX_CMP_L4_CS_ERR_BITS))
 
-#define RX_CMP_IP_CS_ERR_BITS	rte_cpu_to_le_32(RX_PKT_CMPL_ERRORS_IP_CS_ERROR)
+#define RX_CMP_L4_CS_UNKNOWN(rxcmp1)					\
+	    !((rxcmp1)->flags2 & RX_CMP_L4_CS_BITS)
 
-#define RX_CMP_IP_CS_BITS	rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_IP_CS_CALC)
+#define RX_CMP_IP_CS_ERR_BITS	\
+	rte_cpu_to_le_32(RX_PKT_CMPL_ERRORS_IP_CS_ERROR | \
+			 RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR)
+
+#define RX_CMP_IP_CS_UNKNOWN(rxcmp1)					\
+        !((rxcmp1)->flags2 & RX_CMP_IP_CS_BITS)
+
+#define RX_CMP_IP_CS_BITS	\
+	rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_IP_CS_CALC | \
+		 RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC)
 
 #define RX_CMP_IP_CS_OK(rxcmp1)						\
 		(((rxcmp1)->flags2 & RX_CMP_IP_CS_BITS) &&	\
