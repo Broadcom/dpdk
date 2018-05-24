@@ -3041,7 +3041,7 @@ int bnxt_hwrm_port_clr_stats(struct bnxt *bp)
 	struct bnxt_pf_info *pf = &bp->pf;
 	int rc;
 
-	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
+	if (!(bp->flags & BNXT_FLAG_PORT_STATS) || BNXT_VF(bp))
 		return 0;
 
 	HWRM_PREP(req, PORT_CLR_STATS);
