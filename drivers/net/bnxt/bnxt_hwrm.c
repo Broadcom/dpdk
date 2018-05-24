@@ -2143,6 +2143,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		link_req.auto_link_speed_mask =
 			bnxt_parse_eth_link_speed_mask(bp,
 						       dev_conf->link_speeds);
+		RTE_LOG(DEBUG, PMD, "AutoNeg Mode\n");
 	} else {
 		if (bp->link_info.phy_type ==
 		    HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASET ||
@@ -2162,6 +2163,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 			link_req.link_speed = bp->link_info.force_link_speed;
 		else
 			link_req.link_speed = bp->link_info.auto_link_speed;
+		RTE_LOG(DEBUG, PMD, "Set Link Speed %x\n", speed);
 	}
 	link_req.duplex = bnxt_parse_eth_link_duplex(dev_conf->link_speeds);
 	link_req.auto_pause = bp->link_info.auto_pause;
