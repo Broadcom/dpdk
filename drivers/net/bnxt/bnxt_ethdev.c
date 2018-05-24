@@ -2917,7 +2917,7 @@ skip_init:
 	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
 
-	if (BNXT_PF(bp) && pci_dev->id.device_id != BROADCOM_DEV_ID_NS2) {
+	if (pci_dev->id.device_id != BROADCOM_DEV_ID_NS2) {
 		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
 			 "bnxt_%04x:%02x:%02x:%02x-%s", pci_dev->addr.domain,
 			 pci_dev->addr.bus, pci_dev->addr.devid,
