@@ -415,7 +415,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
-	unsigned int max_rx_rings;
+	//unsigned int max_rx_rings;
 
 	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
@@ -426,13 +426,14 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	/* PF/VF specifics */
 	if (BNXT_PF(bp))
 		dev_info->max_vfs = bp->pdev->max_vfs;
-	max_rx_rings = RTE_MIN(bp->max_vnics, RTE_MIN(bp->max_l2_ctx,
-						RTE_MIN(bp->max_rsscos_ctx,
-						bp->max_stat_ctx)));
+	//max_rx_rings = RTE_MIN(bp->max_vnics, RTE_MIN(bp->max_l2_ctx,
+						//RTE_MIN(bp->max_rsscos_ctx,
+						//bp->max_stat_ctx)));
 	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
-	dev_info->max_rx_queues = max_rx_rings;
-	dev_info->max_tx_queues = max_rx_rings;
 	dev_info->reta_size = bp->max_rsscos_ctx;
+	dev_info->max_rx_queues = bp->max_rx_rings;
+	dev_info->max_tx_queues = bp->max_rx_rings;
+	max_vnics = bp->max_vnics;
 	dev_info->hash_key_size = 40;
 	max_vnics = bp->max_vnics;
 
@@ -528,6 +529,26 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
 
 	/* Inherit new configurations */
+	if (eth_dev->data->nb_rx_queues > bp->max_rx_rings ||
+	    eth_dev->data->nb_tx_queues > bp->max_tx_rings ||
+	    (eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues + 1) >
+	    bp->max_cp_rings ||
+	    (eth_dev->data->nb_rx_queues + eth_dev->data->nb_tx_queues) >
+	    bp->max_stat_ctx ||
+	    (uint32_t)(eth_dev->data->nb_rx_queues + 1) > bp->max_ring_grps) {
+		RTE_LOG(ERR, PMD,
+			"Insufficient resources to support requested config\n");
+		RTE_LOG(ERR, PMD,
+			"Num Queues Requested: Tx %d, Rx %d\n",
+			eth_dev->data->nb_tx_queues,
+			eth_dev->data->nb_rx_queues);
+		RTE_LOG(ERR, PMD,
+			"Res available: TxQ %d, RxQ %d, CQ %d Stat %d, Grp %d\n",
+			bp->max_tx_rings, bp->max_rx_rings, bp->max_cp_rings,
+			bp->max_stat_ctx, bp->max_ring_grps);
+		return -ENOSPC;
+	}
+
 	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
 	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
