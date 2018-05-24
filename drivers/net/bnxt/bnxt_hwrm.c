@@ -168,7 +168,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	return 0;
 
 err_ret:
-	return -1;
+	return -ETIMEDOUT;
 }
 
 /*
@@ -197,6 +197,8 @@ err_ret:
 		RTE_LOG(ERR, PMD, "%s failed rc:%d\n", \
 			__func__, rc); \
 		rte_spinlock_unlock(&bp->hwrm_lock); \
+		if (rc > 0) \
+			rc = -EINVAL; \
 		return rc; \
 	} \
 	if (resp->error_code) { \
@@ -218,6 +220,8 @@ err_ret:
 				"%s error %d\n", __func__, rc); \
 		} \
 		rte_spinlock_unlock(&bp->hwrm_lock); \
+		if (rc > 0) \
+			rc = -EINVAL; \
 		return rc; \
 	} \
 } while (0)
