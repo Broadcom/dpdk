@@ -430,12 +430,13 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 						//RTE_MIN(bp->max_rsscos_ctx,
 						//bp->max_stat_ctx)));
 	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
-	dev_info->reta_size = bp->max_rsscos_ctx;
 	dev_info->max_rx_queues = bp->max_rx_rings;
 	dev_info->max_tx_queues = bp->max_rx_rings;
 	max_vnics = bp->max_vnics;
 	dev_info->hash_key_size = 40;
+	dev_info->reta_size = bp->max_rsscos_ctx;
 	max_vnics = bp->max_vnics;
+	dev_info->hash_key_size = 40;
 
 	/* Fast path specifics */
 	dev_info->min_rx_bufsize = 1;
@@ -528,6 +529,26 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
 
+	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
+	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
+
+	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
+		int rc;
+
+		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM resource alloc failure rc: %x\n", rc);
+			return -ENOSPC;
+		}
+
+		/* legacy DPDK needs to get updated values */
+		rc = bnxt_hwrm_func_qcaps(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "hwrm func qcaps failed. rc %d\n", rc);
+			return -ENOSPC;
+		}
+	}
+
 	/* Inherit new configurations */
 	if (eth_dev->data->nb_rx_queues > bp->max_rx_rings ||
 	    eth_dev->data->nb_tx_queues > bp->max_tx_rings ||
@@ -549,8 +570,6 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		return -ENOSPC;
 	}
 
-	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
-	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
 	bp->tx_cp_nr_rings = bp->tx_nr_rings;
 
@@ -607,7 +626,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto error;
 
-	bnxt_link_update_op(eth_dev, 1);
+	bnxt_link_update_op(eth_dev, 0);
 	bp->flags |= BNXT_FLAG_INIT_DONE;
 
 	if (eth_dev->data->dev_conf.rxmode.hw_vlan_filter)
@@ -3049,6 +3068,25 @@ skip_init:
 		memset(bp->pf.vf_req_fwd, 0, sizeof(bp->pf.vf_req_fwd));
 	}
 
+	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
+		int rc;
+
+		bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
+		bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
+
+		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM resource alloc failure rc: %x\n", rc);
+			return -ENOSPC;
+		}
+
+		/* legacy DPDK needs to get updated values */
+		rc = bnxt_hwrm_func_qcaps(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "hwrm func qcaps failed. rc %d\n", rc);
+			return -ENOSPC;
+		}
+	}
 	/*
 	 * The following are used for driver cleanup.  If we disallow these,
 	 * VF drivers can't clean up cleanly.

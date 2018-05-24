@@ -152,6 +152,7 @@
 #define HWRM_WOL_FILTER_FREE		(UINT32_C(0xf1))
 #define HWRM_WOL_FILTER_QCFG		(UINT32_C(0xf2))
 #define HWRM_WOL_REASON_QCFG		(UINT32_C(0xf3))
+#define HWRM_FUNC_RESOURCE_QCAPS	(UINT32_C(0x190))
 #define HWRM_DBG_DUMP			(UINT32_C(0xff14))
 #define HWRM_NVM_VALIDATE_OPTION	(UINT32_C(0xffef))
 #define HWRM_NVM_FLUSH			(UINT32_C(0xfff0))
@@ -2271,109 +2272,241 @@ struct hwrm_func_reset_output {
  */
 /* Input (32 bytes) */
 struct hwrm_func_vf_cfg_input {
-	uint16_t req_type;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
 	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
 	 */
-	uint16_t cmpl_ring;
+	uint16_t	cmpl_ring;
 	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
 	 */
-	uint16_t seq_id;
-	/* This value indicates the command sequence number. */
-	uint16_t target_id;
+	uint16_t	seq_id;
 	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
 	 */
-	uint64_t resp_addr;
+	uint16_t	target_id;
 	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
 	 */
-	uint32_t enables;
-	/* This bit must be '1' for the mtu field to be configured. */
-	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_MTU                 UINT32_C(0x1)
-	/* This bit must be '1' for the guest_vlan field to be configured. */
-	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_GUEST_VLAN          UINT32_C(0x2)
+	uint64_t	resp_addr;
+	uint32_t	enables;
 	/*
-	 * This bit must be '1' for the async_event_cr field to be configured.
+	 * This bit must be '1' for the mtu field to be
+	 * configured.
 	 */
-	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_ASYNC_EVENT_CR      UINT32_C(0x4)
-	/* This bit must be '1' for the dflt_mac_addr field to be configured. */
-	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_DFLT_MAC_ADDR       UINT32_C(0x8)
-	uint16_t mtu;
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_MTU                  UINT32_C(0x1)
 	/*
-	 * The maximum transmission unit requested on the function. The HWRM
-	 * should make sure that the mtu of the function does not exceed the mtu
-	 * of the physical port that this function is associated with. In
-	 * addition to requesting mtu per function, it is possible to configure
-	 * mtu per transmit ring. By default, the mtu of each transmit ring
-	 * associated with a function is equal to the mtu of the function. The
-	 * HWRM should make sure that the mtu of each transmit ring that is
-	 * assigned to a function has a valid mtu.
+	 * This bit must be '1' for the guest_vlan field to be
+	 * configured.
 	 */
-	uint16_t guest_vlan;
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_GUEST_VLAN           UINT32_C(0x2)
 	/*
-	 * The guest VLAN for the function being configured. This field's format
-	 * is same as 802.1Q Tag's Tag Control Information (TCI) format that
-	 * includes both Priority Code Point (PCP) and VLAN Identifier (VID).
+	 * This bit must be '1' for the async_event_cr field to be
+	 * configured.
 	 */
-	uint16_t async_event_cr;
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_ASYNC_EVENT_CR       UINT32_C(0x4)
 	/*
-	 * ID of the target completion ring for receiving asynchronous event
-	 * completions. If this field is not valid, then the HWRM shall use the
-	 * default completion ring of the function that is being configured as
-	 * the target completion ring for providing any asynchronous event
-	 * completions for that function. If this field is valid, then the HWRM
-	 * shall use the completion ring identified by this ID as the target
-	 * completion ring for providing any asynchronous event completions for
-	 * the function that is being configured.
+	 * This bit must be '1' for the dflt_mac_addr field to be
+	 * configured.
 	 */
-	uint8_t dflt_mac_addr[6];
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_DFLT_MAC_ADDR        UINT32_C(0x8)
 	/*
-	 * This value is the current MAC address requested by the VF driver to
-	 * be configured on this VF. A value of 00-00-00-00-00-00 indicates no
-	 * MAC address configuration is requested by the VF driver. The parent
-	 * PF driver may reject or overwrite this MAC address.
+	 * This bit must be '1' for the num_rsscos_ctxs field to be
+	 * configured.
 	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS      UINT32_C(0x10)
+	/*
+	 * This bit must be '1' for the num_cmpl_rings field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_CMPL_RINGS       UINT32_C(0x20)
+	/*
+	 * This bit must be '1' for the num_tx_rings field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_TX_RINGS         UINT32_C(0x40)
+	/*
+	 * This bit must be '1' for the num_rx_rings field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_RX_RINGS         UINT32_C(0x80)
+	/*
+	 * This bit must be '1' for the num_l2_ctxs field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_L2_CTXS          UINT32_C(0x100)
+	/*
+	 * This bit must be '1' for the num_vnics field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_VNICS            UINT32_C(0x200)
+	/*
+	 * This bit must be '1' for the num_stat_ctxs field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_STAT_CTXS        UINT32_C(0x400)
+	/*
+	 * This bit must be '1' for the num_hw_ring_grps field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS     UINT32_C(0x800)
+	/*
+	 * The maximum transmission unit requested on the function.
+	 * The HWRM should make sure that the mtu of
+	 * the function does not exceed the mtu of the physical
+	 * port that this function is associated with.
+	 * 
+	 * In addition to requesting mtu per function, it is
+	 * possible to configure mtu per transmit ring.
+	 * By default, the mtu of each transmit ring associated
+	 * with a function is equal to the mtu of the function.
+	 * The HWRM should make sure that the mtu of each transmit
+	 * ring that is assigned to a function has a valid mtu.
+	 */
+	uint16_t	mtu;
+	/*
+	 * The guest VLAN for the function being configured.
+	 * This field's format is same as 802.1Q Tag's
+	 * Tag Control Information (TCI) format that includes both
+	 * Priority Code Point (PCP) and VLAN Identifier (VID).
+	 */
+	uint16_t	guest_vlan;
+	/*
+	 * ID of the target completion ring for receiving asynchronous
+	 * event completions. If this field is not valid, then the
+	 * HWRM shall use the default completion ring of the function
+	 * that is being configured as the target completion ring for
+	 * providing any asynchronous event completions for that
+	 * function.
+	 * If this field is valid, then the HWRM shall use the
+	 * completion ring identified by this ID as the target
+	 * completion ring for providing any asynchronous event
+	 * completions for the function that is being configured.
+	 */
+	uint16_t	async_event_cr;
+	/*
+	 * This value is the current MAC address requested by the VF
+	 * driver to be configured on this VF. A value of
+	 * 00-00-00-00-00-00 indicates no MAC address configuration
+	 * is requested by the VF driver.
+	 * The parent PF driver may reject or overwrite this
+	 * MAC address.
+	 */
+	uint8_t	dflt_mac_addr[6];
+	uint32_t	flags;
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of TX rings) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_TX_ASSETS_TEST             UINT32_C(0x1)
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of RX rings) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_RX_ASSETS_TEST             UINT32_C(0x2)
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of CMPL rings) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_CMPL_ASSETS_TEST           UINT32_C(0x4)
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of RSS ctx) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_RSSCOS_CTX_ASSETS_TEST     UINT32_C(0x8)
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of ring groups) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_RING_GRP_ASSETS_TEST       UINT32_C(0x10)
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of stat ctx) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_STAT_CTX_ASSETS_TEST       UINT32_C(0x20)
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of VNICs) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_VNIC_ASSETS_TEST           UINT32_C(0x40)
+	/*
+	 * This bit requests that the firmware test to see if all the assets
+	 * requested in this command (i.e. number of L2 ctx) are available.
+	 * The firmware will return an error if the requested assets are
+	 * not available. The firwmare will NOT reserve the assets if they
+	 * are available.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_L2_CTX_ASSETS_TEST         UINT32_C(0x80)
+	/* The number of RSS/COS contexts requested for the VF. */
+	uint16_t	num_rsscos_ctxs;
+	/* The number of completion rings requested for the VF. */
+	uint16_t	num_cmpl_rings;
+	/* The number of transmit rings requested for the VF. */
+	uint16_t	num_tx_rings;
+	/* The number of receive rings requested for the VF. */
+	uint16_t	num_rx_rings;
+	/* The number of L2 contexts requested for the VF. */
+	uint16_t	num_l2_ctxs;
+	/* The number of vnics requested for the VF. */
+	uint16_t	num_vnics;
+	/* The number of statistic contexts requested for the VF. */
+	uint16_t	num_stat_ctxs;
+	/* The number of HW ring groups requested for the VF. */
+	uint16_t	num_hw_ring_grps;
+	uint8_t	unused_0[4];
 } __attribute__((packed));
 
-/* Output (16 bytes) */
 
+/* hwrm_func_vf_cfg_output (size:128b/16B) */
 struct hwrm_func_vf_cfg_output {
-	uint16_t error_code;
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
 	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
 	 */
-	uint16_t req_type;
-	/* This field returns the type of original request. */
-	uint16_t seq_id;
-	/* This field provides original sequence number of the command. */
-	uint16_t resp_len;
-	/*
-	 * This field is the length of the response in bytes. The last
-	 * byte of the response is a valid flag that will read as '1'
-	 * when the command has been completely written to memory.
-	 */
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-	uint8_t valid;
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
+	uint8_t	valid;
 } __attribute__((packed));
 
 /* hwrm_func_qcaps */
@@ -4380,6 +4513,109 @@ struct hwrm_func_buf_unrgtr_output {
 	 * internal processor, the order of writes has to be such that
 	 * this field is written last.
 	 */
+} __attribute__((packed));
+
+/* hwrm_func_resource_qcaps_input (size:192b/24B) */
+struct hwrm_func_resource_qcaps_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFE - Reserved for internal processors
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Function ID of the function that is being queried.
+	 * 0xFF... (All Fs) if the query is for the requesting
+	 * function.
+	 */
+	uint16_t	fid;
+	uint8_t	unused_0[6];
+} __attribute__((packed));
+
+
+/* hwrm_func_resource_qcaps_output (size:384b/48B) */
+struct hwrm_func_resource_qcaps_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Maximum guaranteed number of VFs supported by PF. Not applicable for VFs. */
+	uint16_t	max_vfs;
+	/* Maximum guaranteed number of MSI-X vectors supported by function */
+	uint16_t	max_msix;
+	/* Hint of strategy to be used by PF driver to reserve resources for its VF */
+	uint16_t	vf_reservation_strategy;
+	/* The PF driver should evenly divide its remaining resources among all VFs. */
+	#define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_MAXIMAL UINT32_C(0x0)
+	/* The PF driver should only reserve minimal resources for each VF. */
+	#define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_MINIMAL UINT32_C(0x1)
+	#define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_LAST   HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_MINIMAL
+	/* Minimum guaranteed number of RSS/COS contexts */
+	uint16_t	min_rsscos_ctx;
+	/* Maximum non-guaranteed number of RSS/COS contexts */
+	uint16_t	max_rsscos_ctx;
+	/* Minimum guaranteed number of completion rings */
+	uint16_t	min_cmpl_rings;
+	/* Maxiumum non-guaranteed number of completion rings */
+	uint16_t	max_cmpl_rings;
+	/* Minimum guaranteed number of transmit rings */
+	uint16_t	min_tx_rings;
+	/* Maxiumum non-guaranteed number of transmit rings */
+	uint16_t	max_tx_rings;
+	/* Minimum guaranteed number of receive rings */
+	uint16_t	min_rx_rings;
+	/* Maxiumum non-guaranteed number of receive rings */
+	uint16_t	max_rx_rings;
+	/* Minimum guaranteed number of L2 contexts */
+	uint16_t	min_l2_ctxs;
+	/* Maxiumum non-guaranteed number of L2 contexts */
+	uint16_t	max_l2_ctxs;
+	/* Minimum guaranteed number of VNICs */
+	uint16_t	min_vnics;
+	/* Maxiumum non-guaranteed number of VNICs */
+	uint16_t	max_vnics;
+	/* Minimum guaranteed number of statistic contexts */
+	uint16_t	min_stat_ctx;
+	/* Maxiumum non-guaranteed number of statistic contexts */
+	uint16_t	max_stat_ctx;
+	/* Minimum guaranteed number of ring groups */
+	uint16_t	min_hw_ring_grps;
+	/* Maxiumum non-guaranteed number of ring groups */
+	uint16_t	max_hw_ring_grps;
+	uint8_t	unused_0;
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
 } __attribute__((packed));
 
 /* hwrm_port_phy_cfg */
