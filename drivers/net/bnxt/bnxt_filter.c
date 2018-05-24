@@ -96,9 +96,9 @@ void bnxt_init_filters(struct bnxt *bp)
 	STAILQ_INIT(&bp->free_filter_list);
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
-		filter->fw_l2_filter_id = -1;
-		filter->fw_em_filter_id = -1;
-		filter->fw_ntuple_filter_id = -1;
+		filter->fw_l2_filter_id = BNXT_NA_SIGNATURE_UINT64;
+		filter->fw_em_filter_id = BNXT_NA_SIGNATURE_UINT64;
+		filter->fw_ntuple_filter_id = BNXT_NA_SIGNATURE_UINT64;
 		STAILQ_INSERT_TAIL(&bp->free_filter_list, filter, next);
 	}
 }
@@ -144,7 +144,7 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 	max_filters = bp->max_l2_ctx;
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
-		if (filter->fw_l2_filter_id != ((uint64_t)-1)) {
+		if (filter->fw_l2_filter_id != BNXT_NA_SIGNATURE_UINT64) {
 			RTE_LOG(ERR, PMD, "HWRM filter is not freed??\n");
 			/* Call HWRM to try to free filter again */
 			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
@@ -164,7 +164,7 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 int bnxt_alloc_filter_mem(struct bnxt *bp)
 {
 	struct bnxt_filter_info *filter_mem;
-	uint16_t max_filters;
+	uint16_t max_filters, i;
 
 	max_filters = bp->max_l2_ctx;
 	/* Allocate memory for VNIC pool and filter pool */
@@ -177,6 +177,10 @@ int bnxt_alloc_filter_mem(struct bnxt *bp)
 		return -ENOMEM;
 	}
 	bp->filter_info = filter_mem;
+
+	for (i = 0; i < bp->max_l2_ctx; i++)
+		filter_mem[i].fw_l2_filter_id = BNXT_NA_SIGNATURE_UINT64;
+
 	return 0;
 }
 

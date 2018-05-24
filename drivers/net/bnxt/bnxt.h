@@ -276,6 +276,8 @@ struct bnxt {
 	uint8_t			num_leds;
 };
 
+#define BNXT_NA_SIGNATURE_UINT64		((uint64_t)(-1))
+
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 

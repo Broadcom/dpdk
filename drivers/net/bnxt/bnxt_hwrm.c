@@ -355,7 +355,7 @@ int bnxt_hwrm_clear_l2_filter(struct bnxt *bp,
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
-	filter->fw_l2_filter_id = -1;
+	filter->fw_l2_filter_id = BNXT_NA_SIGNATURE_UINT64;
 
 	return 0;
 }
