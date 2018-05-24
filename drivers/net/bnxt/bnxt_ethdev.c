@@ -570,6 +570,11 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 			"RxQ cnt %d > CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
 			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	}
+
+	/* Set IPV4 + UDP RSS Hash by default */
+	bp->flags |= BNXT_FLAG_UPDATE_HASH;
+	bp->rss_conf.rss_hf |= ETH_RSS_IP | ETH_RSS_UDP;
+
 	bp->dev_stopped = 0;
 
 	rc = bnxt_init_nic(bp);
