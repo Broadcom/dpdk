@@ -161,7 +161,8 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 	if (tx_pkt->ol_flags & (PKT_TX_TCP_SEG | PKT_TX_TCP_CKSUM |
 				PKT_TX_UDP_CKSUM | PKT_TX_IP_CKSUM |
-				PKT_TX_VLAN_PKT | PKT_TX_OUTER_IP_CKSUM))
+				PKT_TX_VLAN_PKT | PKT_TX_OUTER_IP_CKSUM |
+				PKT_TX_TUNNEL_GRE | PKT_TX_TUNNEL_VXLAN))
 		long_bd = true;
 
 	tx_buf = &txr->tx_buf_ring[txr->tx_prod];
