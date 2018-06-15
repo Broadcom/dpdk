@@ -81,8 +81,14 @@ static uint8_t broadcom_custom = 0;
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
 #define GRE_KEY_PRESENT 0x2000
+#define GRE_SEQ_PRESENT 0x0100
+#define GRE_ACK_PRESENT 0x0010
+#define GRE_V1_PRESENT 0x0001
 #define GRE_KEY_LEN     4
-#define GRE_SUPPORTED_FIELDS GRE_KEY_PRESENT
+#define GRE_SEQ_LEN     4
+#define GRE_ACK_LEN     4
+#define GRE_SUPPORTED_FIELDS (GRE_KEY_PRESENT | GRE_V1_PRESENT | \
+				GRE_SEQ_PRESENT | GRE_ACK_PRESENT)
 
 /* We cannot use rte_cpu_to_be_16() on a constant in a switch/case */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
@@ -113,6 +119,14 @@ struct testpmd_offload_info {
 struct simple_gre_hdr {
 	uint16_t flags;
 	uint16_t proto;
+} __attribute__((__packed__));
+
+/* extended GRE header */
+struct extended_gre_hdr {
+	uint16_t flags;
+	uint16_t proto;
+	uint16_t payload_length;
+	uint16_t key;
 } __attribute__((__packed__));
 
 static uint16_t
@@ -250,10 +264,22 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 	uint8_t gre_len = 0;
 
 	/* check which fields are supported */
-	if ((gre_hdr->flags & _htons(~GRE_SUPPORTED_FIELDS)) != 0)
+	if ((gre_hdr->flags & _htons(~GRE_SUPPORTED_FIELDS)) != 0) {
+		printf("csum: unsupported GRE header\n");
 		return;
+	}
 
-	gre_len += sizeof(struct simple_gre_hdr);
+	if ((gre_hdr->flags & _htons(GRE_V1_PRESENT))) {
+		gre_len += sizeof(struct simple_gre_hdr);
+
+		if (gre_hdr->flags & _htons(GRE_SEQ_PRESENT))
+			gre_len += GRE_SEQ_LEN;
+
+		if (gre_hdr->flags & _htons(GRE_ACK_PRESENT))
+			gre_len += GRE_ACK_LEN;
+	} else {
+		gre_len += sizeof(struct simple_gre_hdr);
+	}
 
 	if (gre_hdr->flags & _htons(GRE_KEY_PRESENT))
 		gre_len += GRE_KEY_LEN;
@@ -294,8 +320,10 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		eth_hdr = (struct ether_hdr *)((char *)gre_hdr + gre_len);
 
 		parse_ethernet(eth_hdr, info, 0);
-	} else
+	} else {
+		printf("csum: gre_hdr->proto = 0x%x\n", gre_hdr->proto);
 		return;
+	}
 
 	info->l2_len += gre_len;
 }
