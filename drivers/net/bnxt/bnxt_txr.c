@@ -266,12 +266,22 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			txbd1->lflags |= TX_BD_FLG_TIP_TCP_UDP_CHKSUM;
 			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_CKSUM) ==
-			   PKT_TX_OIP_IIP_CKSUM ) {
+			   PKT_TX_OIP_IIP_CKSUM) {
 			/* Outer IP, Inner IP CSO */
 			txbd1->lflags |= TX_BD_FLG_TIP_IP_CHKSUM;
 			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_TCP_UDP_CKSUM) ==
 			   PKT_TX_TCP_UDP_CKSUM) {
+			/* TCP/UDP CSO */
+			txbd1->lflags |= TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM;
+			txbd1->mss = 0;
+		} else if ((tx_pkt->ol_flags & PKT_TX_TCP_CKSUM) ==
+			   PKT_TX_TCP_CKSUM) {
+			/* TCP/UDP CSO */
+			txbd1->lflags |= TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM;
+			txbd1->mss = 0;
+		} else if ((tx_pkt->ol_flags & PKT_TX_UDP_CKSUM) ==
+			   PKT_TX_UDP_CKSUM) {
 			/* TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM;
 			txbd1->mss = 0;
@@ -284,10 +294,6 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			   PKT_TX_OUTER_IP_CKSUM) {
 			/* IP CSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_T_IP_CHKSUM;
-			txbd1->mss = 0;
-		} else {
-			txbd1->lflags |= TX_BD_FLG_IP_TCP_UDP_CHKSUM |
-				TX_BD_FLG_TIP_IP_TCP_UDP_CHKSUM;
 			txbd1->mss = 0;
 		}
 	} else {
