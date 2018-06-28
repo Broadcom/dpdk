@@ -129,6 +129,7 @@ struct bnxt_child_vf_info {
 struct bnxt_pf_info {
 #define BNXT_FIRST_PF_FID	1
 #define BNXT_MAX_VFS(bp)	(bp->pf.max_vfs)
+#define BNXT_TOTAL_VFS(bp)	((bp)->pf.total_vfs)
 #define BNXT_FIRST_VF_FID	128
 #define BNXT_PF_RINGS_USED(bp)	bnxt_get_num_queues(bp)
 #define BNXT_PF_RINGS_AVAIL(bp)	(bp->pf.max_cp_rings - BNXT_PF_RINGS_USED(bp))
@@ -136,6 +137,9 @@ struct bnxt_pf_info {
 	uint16_t		first_vf_id;
 	uint16_t		active_vfs;
 	uint16_t		max_vfs;
+	uint16_t		total_vfs; /* Total VFs possible.
+					    * Not necessarily enabled.
+					    */
 	uint32_t		func_cfg_flags;
 	void			*vf_req_buf;
 	rte_iova_t		vf_req_buf_dma_addr;
@@ -201,6 +205,7 @@ struct bnxt {
 #define BNXT_FLAG_JUMBO		(1 << 3)
 #define BNXT_FLAG_SHORT_CMD	(1 << 4)
 #define BNXT_FLAG_UPDATE_HASH	(1 << 5)
+#define BNXT_FLAG_MULTI_HOST    (1 << 7)
 #define BNXT_FLAG_EXT_RX_PORT_STATS	(1 << 8)
 #define BNXT_FLAG_EXT_TX_PORT_STATS	(1 << 9)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
@@ -208,8 +213,10 @@ struct bnxt {
 #define BNXT_FLAG_TRUSTED_VF_EN	(1 << 12)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
-#define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
-#define BNXT_NPAR_PF(bp)	(BNXT_PF(bp) && BNXT_NPAR_ENABLED(bp))
+#define BNXT_NPAR(bp)	((bp)->port_partition_type)
+#define BNXT_NPAR_PF(bp)	(BNXT_PF(bp) && BNXT_NPAR(bp))
+#define BNXT_MH(bp)		((bp)->flags & BNXT_FLAG_MULTI_HOST)
+#define BNXT_SINGLE_PF(bp)	(BNXT_PF(bp) && !BNXT_NPAR(bp) && !BNXT_MH(bp))
 #define BNXT_VF_IS_TRUSTED(bp)	((bp)->flags & BNXT_FLAG_TRUSTED_VF_EN)
 
 	unsigned int		rx_nr_rings;
