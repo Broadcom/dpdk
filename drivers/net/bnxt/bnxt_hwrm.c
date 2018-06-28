@@ -193,6 +193,18 @@ err_ret:
 	req.resp_addr = rte_cpu_to_le_64(bp->hwrm_cmd_resp_dma_addr); \
 } while (0)
 
+#define HWRM_CHECK_RESULT_SILENT() do {\
+	if (rc) { \
+		rte_spinlock_unlock(&bp->hwrm_lock); \
+		return rc; \
+	} \
+	if (resp->error_code) { \
+		rc = rte_le_to_cpu_16(resp->error_code); \
+		rte_spinlock_unlock(&bp->hwrm_lock); \
+		return rc; \
+	} \
+} while (0)
+
 #define HWRM_CHECK_RESULT() do {\
 	if (rc) { \
 		RTE_LOG(ERR, PMD, "%s failed rc:%d\n", \
@@ -200,6 +212,10 @@ err_ret:
 		rte_spinlock_unlock(&bp->hwrm_lock); \
 		if (rc == HWRM_ERR_CODE_RESOURCE_ACCESS_DENIED) \
 			rc = -EACCES; \
+		else if (rc == HWRM_ERR_CODE_RESOURCE_ALLOC_ERROR) { \
+                        rc = -ENOSPC; \
+			RTE_LOG(ERR, PMD, "Insufficient resources\n"); \
+		} \
 		else if (rc > 0) \
 			rc = -EINVAL; \
 		return rc; \
@@ -507,7 +523,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 	bp->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
 	RTE_LOG(ERR, PMD,
-		"%s(): First_vf_id = %x\n", __func__, resp->first_vf_id);
+		"%s(): First_vf_id = %x\n",
+		 __func__, resp->first_vf_id);
 	/* TODO: For now, do not support VMDq/RFS on VFs. */
 	if (BNXT_PF(bp)) {
 		if (bp->pf.max_vfs)
@@ -594,9 +611,18 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	return rc;
 }
 
-int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp)
+int bnxt_hwrm_check_vf_rings(struct bnxt *bp)
+{
+	if (!(BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)))
+		return 0;
+
+	return bnxt_hwrm_func_reserve_vf_resc(bp, true);
+}
+
+int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp, bool test)
 {
 	int rc;
+	uint32_t flags = 0;
 	uint32_t enables;
 	struct hwrm_func_vf_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	struct hwrm_func_vf_cfg_input req = {0};
@@ -607,7 +633,8 @@ int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp)
 				       HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_TX_RINGS  |
 				       HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_STAT_CTXS |
 				       HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_CMPL_RINGS |
-				       HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
+				       HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS |
+				       HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_VNICS);
 
 	req.num_tx_rings = rte_cpu_to_le_16(bp->tx_nr_rings);
 	req.num_rx_rings = rte_cpu_to_le_16(bp->rx_nr_rings * 2);
@@ -615,19 +642,35 @@ int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp)
 	req.num_cmpl_rings = rte_cpu_to_le_16(bp->rx_nr_rings + bp->tx_nr_rings + 1);
 	req.num_hw_ring_grps = rte_cpu_to_le_16(bp->rx_nr_rings + 1);
 
-	if (bp->vf_resv_strategy == BNXT_VF_RESV_STRATEGY_MINIMAL_STATIC) {
+	req.num_vnics = rte_cpu_to_le_16(bp->rx_nr_rings);
+	if (bp->vf_resv_strategy ==
+	    HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESV_STRATEGY_MINIMAL_STATIC) {
 		enables = HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_VNICS |
 				HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_L2_CTXS |
 				HWRM_FUNC_VF_CFG_INPUT_ENABLES_NUM_RSSCOS_CTXS;
 		req.enables |= rte_cpu_to_le_32(enables);
-		req.num_rsscos_ctxs = rte_cpu_to_le_16(BNXT_VF_MAX_RSS_CTX);
-		req.num_l2_ctxs = rte_cpu_to_le_16(BNXT_VF_MAX_L2_CTX);
-		req.num_vnics = rte_cpu_to_le_16(BNXT_VF_MAX_VNIC);
+		req.num_rsscos_ctxs = rte_cpu_to_le_16(BNXT_VF_RSV_NUM_RSS_CTX);
+		req.num_l2_ctxs = rte_cpu_to_le_16(BNXT_VF_RSV_NUM_L2_CTX);
+		req.num_vnics = rte_cpu_to_le_16(BNXT_VF_RSV_NUM_VNIC);
 	}
+
+	if (test)
+		flags = HWRM_FUNC_VF_CFG_INPUT_FLAGS_TX_ASSETS_TEST |
+			HWRM_FUNC_VF_CFG_INPUT_FLAGS_RX_ASSETS_TEST |
+			HWRM_FUNC_VF_CFG_INPUT_FLAGS_CMPL_ASSETS_TEST |
+			HWRM_FUNC_VF_CFG_INPUT_FLAGS_RING_GRP_ASSETS_TEST |
+			HWRM_FUNC_VF_CFG_INPUT_FLAGS_STAT_CTX_ASSETS_TEST |
+			HWRM_FUNC_VF_CFG_INPUT_FLAGS_VNIC_ASSETS_TEST;
+
+	req.flags = rte_cpu_to_le_32(flags);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
-	HWRM_CHECK_RESULT();
+	if (test)
+		HWRM_CHECK_RESULT_SILENT();
+	else
+		HWRM_CHECK_RESULT();
+
 	HWRM_UNLOCK();
 
 	return rc;

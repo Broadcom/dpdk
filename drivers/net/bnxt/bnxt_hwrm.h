@@ -47,6 +47,9 @@ struct bnxt_cp_ring_info;
 #define HWRM_SPEC_CODE_1_9_0		0x10900
 #define HWRM_SPEC_CODE_1_9_2		0x10902
 
+#define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESV_STRATEGY_MINIMAL_STATIC \
+	HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_MINIMAL_STATIC
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,
@@ -180,7 +183,7 @@ int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 			  uint16_t dir_attr, const uint8_t *data,
 			  size_t data_len);
 int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp);
-int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp);
+int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp, bool test);
 int bnxt_hwrm_ext_port_qstats(struct bnxt *bp);
 int bnxt_hwrm_tunnel_dst_port_query(struct bnxt *bp, uint8_t type,
 				uint16_t *port);
@@ -191,4 +194,5 @@ int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
 				   uint16_t *dst_fid);
 void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 				unsigned int idx __rte_unused);
+int bnxt_hwrm_check_vf_rings(struct bnxt *bp);
 #endif

@@ -458,7 +458,6 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	max_vnics = bp->max_vnics;
 	dev_info->hash_key_size = 40;
 	dev_info->reta_size = bp->max_rsscos_ctx;
-	max_vnics = bp->max_vnics;
 	dev_info->hash_key_size = 40;
 
 	/* Fast path specifics */
@@ -554,6 +553,7 @@ found:
 static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	int rc;
 
 	bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
@@ -562,29 +562,33 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
 
 	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
-		int rc;
+
+		rc = bnxt_hwrm_check_vf_rings(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM insufficient resources\n");
+			return -ENOSPC;
+		}
 
 		bnxt_disable_int(bp);
 
 		bnxt_free_cp_ring(bp, bp->def_cp_ring, 0);
-		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
+		rc = bnxt_hwrm_func_reserve_vf_resc(bp, false);
 		if (rc) {
 			RTE_LOG(ERR, PMD, "HWRM resource alloc failure rc: %x\n", rc);
 			return -ENOSPC;
 		}
+		rc = bnxt_alloc_def_cp_ring(bp);
+		if (rc)
+			return rc;
 
+		bnxt_enable_int(bp);
+	} else {
 		/* legacy DPDK needs to get updated values */
 		rc = bnxt_hwrm_func_qcaps(bp);
 		if (rc) {
 			RTE_LOG(ERR, PMD, "hwrm func qcaps failed. rc %d\n", rc);
 			return -ENOSPC;
 		}
-
-		rc = bnxt_alloc_def_cp_ring(bp);
-		if (rc)
-			return rc;
-
-		bnxt_enable_int(bp);
 	}
 
 	/* Inherit new configurations */
@@ -915,33 +919,58 @@ static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
 	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
+/* Return bnxt_rx_queue pointer corresponding to a given rxq. */
+static struct bnxt_rx_queue *bnxt_qid_to_rxq(struct bnxt *bp, uint16_t qid)
+{
+	if (qid >= bp->rx_nr_rings)
+		return NULL;
+
+	return bp->eth_dev->data->rx_queues[qid];
+}
 
 static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 			    struct rte_eth_rss_reta_entry64 *reta_conf,
 			    uint16_t reta_size)
 {
-	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-	struct bnxt_vnic_info *vnic;
+	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	uint16_t tbl_size = HW_HASH_INDEX_SIZE;
+	uint16_t idx, sft;
 	int i;
+
+	if (!vnic->rss_table)
+		return -EINVAL;
 
 	if (!(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG))
 		return -EINVAL;
 
-	if (reta_size != HW_HASH_INDEX_SIZE) {
+	if (reta_size != tbl_size) {
 		RTE_LOG(ERR, PMD, "The configured hash table lookup size "
 			"(%d) must equal the size supported by the hardware "
-			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
+			"(%d)\n", reta_size, tbl_size);
 		return -EINVAL;
 	}
-	/* Update the RSS VNIC(s) */
-	for (i = 0; i < MAX_FF_POOLS; i++) {
-		STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
-			memcpy(vnic->rss_table, reta_conf, reta_size);
 
-			bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+	for (i = 0; i < reta_size; i++) {
+		struct bnxt_rx_queue *rxq;
+
+		idx = i / RTE_RETA_GROUP_SIZE;
+		sft = i % RTE_RETA_GROUP_SIZE;
+
+		if (!(reta_conf[idx].mask & (1ULL << sft)))
+			continue;
+
+		rxq = bnxt_qid_to_rxq(bp, reta_conf[idx].reta[sft]);
+		if (!rxq) {
+			RTE_LOG(ERR, PMD, "Invalid ring in reta_conf.\n");
+			return -EINVAL;
 		}
+
+		vnic->rss_table[i] = vnic->fw_grp_ids[reta_conf[idx].reta[sft]];
 	}
+
+	bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 	return 0;
 }
 
@@ -3138,21 +3167,27 @@ skip_ext_stats:
 	}
 
 	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
-		int rc;
 
 		if (!eth_dev->data->nb_rx_queues ||
 		    !eth_dev->data->nb_tx_queues)
 			goto skip_reserve_vf_resc;
 
+		rc = bnxt_hwrm_check_vf_rings(bp);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM insufficient resources\n");
+			return -ENOSPC;
+		}
+
 		bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
 		bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
 
-		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
+		rc = bnxt_hwrm_func_reserve_vf_resc(bp, false);
 		if (rc) {
 			RTE_LOG(ERR, PMD, "HWRM resource alloc failure rc: %x\n", rc);
 			return -ENOSPC;
 		}
 
+	} else {
 skip_reserve_vf_resc:
 		/* legacy DPDK needs to get updated values */
 		rc = bnxt_hwrm_func_qcaps(bp);

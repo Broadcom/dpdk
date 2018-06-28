@@ -372,9 +372,10 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 					HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
 					idx, HWRM_NA_SIGNATURE,
 					HWRM_NA_SIGNATURE);
-		if (rc)
+		if (rc) {
+			RTE_LOG(ERR, PMD, "Tx cmpl ring_alloc failed for ring:%d !\n", i);
 			goto err_out;
-
+		}
 		cpr->cp_doorbell = (char *)pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
 		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
@@ -384,9 +385,10 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 					HWRM_RING_ALLOC_INPUT_RING_TYPE_TX,
 					idx, cpr->hw_stats_ctx_id,
 					cp_ring->fw_ring_id);
-		if (rc)
+		if (rc) {
+			RTE_LOG(ERR, PMD, "Tx ring_alloc failed for ring:%d !\n", i);
 			goto err_out;
-
+		}
 		txr->tx_doorbell = (char *)pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
 		txq->index = idx;

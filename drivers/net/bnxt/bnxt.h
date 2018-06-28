@@ -49,6 +49,10 @@
 
 #define BNXT_MAX_MTU		9500
 #define VLAN_TAG_SIZE		4
+#define BNXT_VF_RSV_NUM_RSS_CTX	1
+#define BNXT_VF_RSV_NUM_L2_CTX	4
+/* TODO: For now, do not support VMDq/RFS on VFs. */
+#define BNXT_VF_RSV_NUM_VNIC	1
 #define BNXT_MAX_LED		4
 #define BNXT_VF_MAX_RSS_CTX		1
 #define BNXT_VF_MAX_L2_CTX		4
