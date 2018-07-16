@@ -250,6 +250,8 @@ vxlan_gpe:
 	parse_ethernet(eth_hdr, info, *is_vxlan_gpe);
 
 	info->l2_len += ETHER_VXLAN_HLEN; /* add udp + vxlan */
+	return;
+
 no_eth_hdr:
 	info->l2_len += 2; /* add udp + vxlan */
 }
