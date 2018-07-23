@@ -43,6 +43,10 @@ struct bnxt_cp_ring_info;
 
 #define HWRM_SEQ_ID_INVALID -1U
 
+#define HWRM_SPEC_CODE_1_8_4		0x10804
+#define HWRM_SPEC_CODE_1_9_0		0x10900
+#define HWRM_SPEC_CODE_1_9_2		0x10902
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,
@@ -177,4 +181,5 @@ int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 			  size_t data_len);
 int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp);
 int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp);
+int bnxt_hwrm_ext_port_qstats(struct bnxt *bp);
 #endif
