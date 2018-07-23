@@ -107,7 +107,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	int sz;
 
 	int stats_len = (tx_ring_info || rx_ring_info) ?
-	    RTE_CACHE_LINE_ROUNDUP(sizeof(struct ctx_hw_stats64)) : 0;
+	    RTE_CACHE_LINE_ROUNDUP(sizeof(struct ctx_hw_stats)) : 0;
 
 	int cp_vmem_start = stats_len;
 	int cp_vmem_len = RTE_CACHE_LINE_ROUNDUP(cp_ring->vmem_size);
