@@ -84,11 +84,13 @@ static uint8_t broadcom_custom = 0;
 #define GRE_SEQ_PRESENT 0x0100
 #define GRE_ACK_PRESENT 0x0010
 #define GRE_V1_PRESENT 0x0001
+#define GRE_CSUM_PRESENT 0x8000
 #define GRE_KEY_LEN     4
 #define GRE_SEQ_LEN     4
 #define GRE_ACK_LEN     4
 #define GRE_SUPPORTED_FIELDS (GRE_KEY_PRESENT | GRE_V1_PRESENT | \
-				GRE_SEQ_PRESENT | GRE_ACK_PRESENT)
+				GRE_SEQ_PRESENT | GRE_ACK_PRESENT | \
+				GRE_CSUM_PRESENT)
 
 /* We cannot use rte_cpu_to_be_16() on a constant in a switch/case */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
@@ -267,7 +269,10 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 
 	/* check which fields are supported */
 	if ((gre_hdr->flags & _htons(~GRE_SUPPORTED_FIELDS)) != 0) {
-		printf("csum: unsupported GRE header\n");
+		printf("csum: unsupported GRE header in pkt. 0x%x\n",
+			gre_hdr->flags);
+		printf("csum: supported GRE header. 0x%x\n",
+			_htons(GRE_SUPPORTED_FIELDS));
 		return;
 	}
 
