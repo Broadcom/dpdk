@@ -397,6 +397,9 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	int rc = 0;
 	uint8_t agg_buf = 0;
 	uint16_t cmp_type;
+	struct rx_prod_pkt_bd *rxbd;
+	struct bnxt_sw_rx_bd *rx_buf;
+	struct rte_mbuf *data;
 
 	rxcmp = (struct rx_pkt_cmpl *)
 	    &cpr->cp_desc_ring[cp_cons];
@@ -439,9 +442,14 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	prod = rxr->rx_prod;
 
 	cons = rxcmp->opaque;
+
+	data = __bnxt_alloc_rx_data(rxq->mb_pool);
+	if (!data) {
+		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
+		return -ENOMEM;
+	}
 	mbuf = bnxt_consume_rx_buf(rxr, cons);
-	if (mbuf == NULL)
-		return -EBUSY;
+	RTE_ASSERT(mbuf != NULL);
 
 	rte_prefetch0(mbuf);
 
@@ -514,17 +522,16 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	 * in it.
 	 */
 	prod = RING_NEXT(rxr->rx_ring_struct, prod);
-	if (bnxt_alloc_rx_data(rxq, rxr, prod)) {
-		RTE_LOG(ERR, PMD, "mbuf alloc failed with prod=0x%x\n", prod);
-		rc = -ENOMEM;
-		goto rx;
-	}
+	rxbd = &rxr->rx_desc_ring[prod];
+	rx_buf = &rxr->rx_buf_ring[prod];
+	data->data_off = RTE_PKTMBUF_HEADROOM;
+	rx_buf->mbuf = data;
+	rxbd->address = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR(rx_buf->mbuf));
 	rxr->rx_prod = prod;
 	/*
 	 * All MBUFs are allocated with the same size under DPDK,
 	 * no optimization for rx_copy_thresh
 	 */
-rx:
 	*rx_pkt = mbuf;
 
 next_rx:
@@ -563,9 +570,9 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* TODO: Avoid magic numbers... */
 		if ((CMP_TYPE(rxcmp) & 0x30) == 0x10) {
 			rc = bnxt_rx_pkt(&rx_pkts[nb_rx_pkts], rxq, &raw_cons);
-			if (likely(!rc) || rc == -ENOMEM)
+			if (likely(!rc))
 				nb_rx_pkts++;
-			if (rc == -EBUSY)	/* partial completion */
+			if (rc != 0)	/* partial completion */
 				break;
 		}
 		raw_cons = NEXT_RAW_CMP(raw_cons);
