@@ -3723,3 +3723,22 @@ int bnxt_hwrm_ext_port_qstats(struct bnxt *bp)
 
 	return rc;
 }
+
+int
+bnxt_hwrm_tunnel_dst_port_query(struct bnxt *bp, uint8_t type, uint16_t *port)
+{
+	struct hwrm_tunnel_dst_port_query_input req = {0};
+	struct hwrm_tunnel_dst_port_query_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, TUNNEL_DST_PORT_QUERY);
+	req.tunnel_type = type;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT();
+
+	*port = resp->tunnel_dst_port_val;
+
+	HWRM_UNLOCK();
+
+	return rc;
+}

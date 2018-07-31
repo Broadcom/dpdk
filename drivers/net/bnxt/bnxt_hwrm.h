@@ -182,4 +182,6 @@ int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp);
 int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp);
 int bnxt_hwrm_ext_port_qstats(struct bnxt *bp);
+int bnxt_hwrm_tunnel_dst_port_query(struct bnxt *bp, uint8_t type,
+				uint16_t *port);
 #endif

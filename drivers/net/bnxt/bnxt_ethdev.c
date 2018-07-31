@@ -423,6 +423,9 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
+	uint8_t type = HWRM_TUNNEL_DST_PORT_QUERY_INPUT_TUNNEL_TYPE_VXLAN_V4;
+	uint16_t port = 0;
+	int rc;
 	//unsigned int max_rx_rings;
 
 	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -465,6 +468,14 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 					DEV_TX_OFFLOAD_GRE_TNL_TSO |
 					DEV_TX_OFFLOAD_IPIP_TNL_TSO |
 					DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
+
+	/* If the tunnel is not standard VXLAN or GENEVE, disable TSO */
+	rc = bnxt_hwrm_tunnel_dst_port_query(bp, type, &port);
+	if (!rc && port &&
+	    (port != RTE_BE16(bp->vxlan_port) ||
+	     port != RTE_BE16(bp->geneve_port) ||
+	     port != RTE_BE16(47)))
+		dev_info->tx_offload_capa &= ~DEV_TX_OFFLOAD_TCP_TSO;
 
 	/* *INDENT-OFF* */
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
