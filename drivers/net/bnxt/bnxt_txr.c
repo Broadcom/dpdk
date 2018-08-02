@@ -184,7 +184,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		txbd->flags_type |= TX_BD_LONG_FLAGS_LHINT_GTE2K;
 	else
 		txbd->flags_type |= lhint_arr[tx_pkt->pkt_len >> 9];
-	txbd->address = rte_cpu_to_le_32(RTE_MBUF_DATA_DMA_ADDR(tx_buf->mbuf));
+	txbd->address = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR(tx_buf->mbuf));
 
 	if (long_bd) {
 		txbd->flags_type |= TX_BD_LONG_TYPE_TX_BD_LONG;
@@ -307,7 +307,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		tx_buf = &txr->tx_buf_ring[txr->tx_prod];
 
 		txbd = &txr->tx_desc_ring[txr->tx_prod];
-		txbd->address = rte_cpu_to_le_32(RTE_MBUF_DATA_DMA_ADDR(m_seg));
+		txbd->address = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR(m_seg));
 		txbd->flags_type = TX_BD_SHORT_TYPE_TX_BD_SHORT;
 		txbd->len = m_seg->data_len;
 
@@ -315,7 +315,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	}
 
 	txbd->flags_type |= TX_BD_LONG_FLAGS_PACKET_END;
-	txbd1->lflags = rte_cpu_to_le_32(txbd1->lflags);
+	txbd1->lflags = rte_cpu_to_le_64(txbd1->lflags);
 
 	txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
 
