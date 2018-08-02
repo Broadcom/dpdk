@@ -165,7 +165,6 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				PKT_TX_TUNNEL_GRE | PKT_TX_TUNNEL_VXLAN |
 				PKT_TX_TUNNEL_GENEVE))
 		long_bd = true;
-		long_bd = true;
 
 	tx_buf = &txr->tx_buf_ring[txr->tx_prod];
 	tx_buf->mbuf = tx_pkt;
