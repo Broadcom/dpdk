@@ -146,7 +146,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct tx_bd_long *txbd;
-	struct tx_bd_long_hi *txbd1;
+	struct tx_bd_long_hi *txbd1 = NULL;
 	uint32_t vlan_tag_flags, cfa_action;
 	bool long_bd = false;
 	uint16_t last_prod = 0;
@@ -314,7 +314,8 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	}
 
 	txbd->flags_type |= TX_BD_LONG_FLAGS_PACKET_END;
-	txbd1->lflags = rte_cpu_to_le_64(txbd1->lflags);
+	if (txbd1)
+		txbd1->lflags = rte_cpu_to_le_64(txbd1->lflags);
 
 	txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
 
@@ -352,13 +353,15 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 	uint32_t raw_cons = cpr->cp_raw_cons;
 	uint32_t cons;
-	int nb_tx_pkts = 0;
+	uint32_t nb_tx_pkts = 0;
 	struct tx_cmpl *txcmp;
+	struct bnxt_ring *cp_ring_struct = cpr->cp_ring_struct;
+	uint32_t ring_mask = cp_ring_struct->ring_mask;
 
 	if ((txq->tx_ring->tx_ring_struct->ring_size -
 			(bnxt_tx_avail(txq->tx_ring))) >
 			txq->tx_free_thresh) {
-		while (1) {
+		do {
 			cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 			txcmp = (struct tx_cmpl *)&cpr->cp_desc_ring[cons];
 
@@ -375,7 +378,7 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 						"Unhandled CMP type %02x\n",
 						CMP_TYPE(txcmp));
 			raw_cons = NEXT_RAW_CMP(raw_cons);
-		}
+		} while (nb_tx_pkts < ring_mask);
 		if (nb_tx_pkts)
 			bnxt_tx_cmp(txq, nb_tx_pkts);
 		cpr->cp_raw_cons = raw_cons;
