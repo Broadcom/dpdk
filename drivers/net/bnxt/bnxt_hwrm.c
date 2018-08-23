@@ -1803,16 +1803,6 @@ int bnxt_free_all_hwrm_rings(struct bnxt *bp)
 		}
 	}
 
-	/* Default completion ring */
-	{
-		struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
-
-		if (cpr->cp_ring_struct->fw_ring_id != INVALID_HW_RING_ID) {
-			bnxt_free_cp_ring(bp, cpr, 0);
-			cpr->cp_ring_struct->fw_ring_id = INVALID_HW_RING_ID;
-		}
-	}
-
 	return rc;
 }
 
