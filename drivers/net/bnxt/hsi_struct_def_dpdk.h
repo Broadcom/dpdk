@@ -5575,6 +5575,15 @@ struct hwrm_func_qcfg_output {
 	#define HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_HOST \
 		UINT32_C(0x20)
 	/*
+	 * If the function that is being queried is a PF, then the HWRM shall
+	 * set this field to 0 and the HWRM client shall ignore this field.
+	 * If the function that is being queried is a VF, then the HWRM shall
+	 * set this field to 1 if the queried VF is trusted, otherwise the HWRM
+	 * shall set this field to 0.
+	 */
+	#define HWRM_FUNC_QCFG_OUTPUT_FLAGS_TRUSTED_VF \
+		UINT32_C(0x40)
+	/*
 	 * This value is current MAC address configured for this
 	 * function. A value of 00-00-00-00-00-00 indicates no
 	 * MAC address is currently configured.

@@ -205,10 +205,12 @@ struct bnxt {
 #define BNXT_FLAG_EXT_TX_PORT_STATS	(1 << 9)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1 << 31)
+#define BNXT_FLAG_TRUSTED_VF_EN	(1 << 12)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
 #define BNXT_NPAR_PF(bp)	(BNXT_PF(bp) && BNXT_NPAR_ENABLED(bp))
+#define BNXT_VF_IS_TRUSTED(bp)	((bp)->flags & BNXT_FLAG_TRUSTED_VF_EN)
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;

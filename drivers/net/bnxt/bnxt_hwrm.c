@@ -2258,6 +2258,7 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 	struct hwrm_func_qcfg_input req = {0};
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
 	int rc = 0;
+	uint16_t flags;
 
 	HWRM_PREP(req, FUNC_QCFG);
 	req.fid = rte_cpu_to_le_16(0xffff);
@@ -2268,6 +2269,11 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 
 	/* Hard Coded.. 0xfff VLAN ID mask */
 	bp->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
+	flags = rte_le_to_cpu_16(resp->flags);
+	if (BNXT_VF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_TRUSTED_VF)) {
+		bp->flags |= BNXT_FLAG_TRUSTED_VF_EN;
+		RTE_LOG(INFO, PMD, "Trusted VF cap enabled\n");
+	}
 
 	switch (resp->port_partition_type) {
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:

@@ -783,7 +783,7 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_vnic_info *vnic = STAILQ_FIRST(&bp->ff_pool[pool]);
 	struct bnxt_filter_info *filter;
 
-	if (BNXT_VF(bp)) {
+	if (BNXT_VF(bp) & !BNXT_VF_IS_TRUSTED(bp)) {
 		RTE_LOG(ERR, PMD, "Cannot add MAC address to a VF interface\n");
 		return -ENOTSUP;
 	}
