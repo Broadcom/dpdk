@@ -319,6 +319,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	const struct rte_flow_item_eth *eth_spec, *eth_mask;
 	const struct rte_flow_item_nvgre *nvgre_spec;
 	const struct rte_flow_item_nvgre *nvgre_mask;
+	const struct rte_flow_item_gre *gre_spec;
+	const struct rte_flow_item_gre *gre_mask;
 	const struct rte_flow_item_vxlan *vxlan_spec;
 	const struct rte_flow_item_vxlan *vxlan_mask;
 	uint8_t vni_mask[] = {0xFF, 0xFF, 0xFF};
@@ -349,15 +351,12 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 					   "No support for range");
 			return -rte_errno;
 		}
-		if (!item->spec || !item->mask) {
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "spec/mask is NULL");
-			return -rte_errno;
-		}
+
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
+			if (!item->spec || !item->mask)
+				break;
+
 			eth_spec = (const struct rte_flow_item_eth *)item->spec;
 			eth_mask = (const struct rte_flow_item_eth *)item->mask;
 
@@ -439,6 +438,9 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				(const struct rte_flow_item_ipv4 *)item->spec;
 			ipv4_mask =
 				(const struct rte_flow_item_ipv4 *)item->mask;
+
+			if (!item->spec || !item->mask)
+				break;
 			/* Only IP DST and SRC fields are maskable. */
 			if (ipv4_mask->hdr.version_ihl ||
 			    ipv4_mask->hdr.type_of_service ||
@@ -492,6 +494,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			ipv6_mask =
 				(const struct rte_flow_item_ipv6 *)item->mask;
 
+			if (!item->spec || !item->mask)
+				break;
 			/* Only IP DST and SRC fields are maskable. */
 			if (ipv6_mask->hdr.vtc_flow ||
 			    ipv6_mask->hdr.payload_len ||
@@ -534,6 +538,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
 			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
 
+			if (!item->spec || !item->mask)
+				break;
 			/* Check TCP mask. Only DST & SRC ports are maskable */
 			if (tcp_mask->hdr.sent_seq ||
 			    tcp_mask->hdr.recv_ack ||
@@ -571,6 +577,8 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			udp_spec = (const struct rte_flow_item_udp *)item->spec;
 			udp_mask = (const struct rte_flow_item_udp *)item->mask;
 
+			if (!item->spec || !item->mask)
+				break;
 			if (udp_mask->hdr.dgram_len ||
 			    udp_mask->hdr.dgram_cksum) {
 				rte_flow_error_set(error, EINVAL,
@@ -618,9 +626,13 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				return -rte_errno;
 			}
 
+			if (!vxlan_spec && !vxlan_mask) {
+				filter->tunnel_type =
+					CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN;
+				break;
+			}
 			if (vxlan_spec->rsvd1 || vxlan_spec->rsvd0[0] ||
-			    vxlan_spec->rsvd0[1] || vxlan_spec->rsvd0[2] ||
-			    vxlan_spec->flags != 0x8) {
+			    vxlan_spec->rsvd0[1] || vxlan_spec->rsvd0[2]) {
 				rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
@@ -667,6 +679,12 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				return -rte_errno;
 			}
 
+			if (!nvgre_spec && !nvgre_mask) {
+				filter->tunnel_type =
+				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
+				break;
+			}
+
 			if (nvgre_spec->c_k_s_rsvd0_ver != 0x2000 ||
 			    nvgre_spec->protocol != 0x6558) {
 				rte_flow_error_set(error, EINVAL,
@@ -695,6 +713,31 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
 			}
 			break;
+
+		case RTE_FLOW_ITEM_TYPE_GRE:
+			gre_spec = (const struct rte_flow_item_gre *)item->spec;
+			gre_mask = (const struct rte_flow_item_gre *)item->mask;
+
+			/* Check if GRE item is used to describe protocol.
+			 * If yes, both spec and mask should be NULL.
+			 * If no, both spec and mask shouldn't be NULL.
+			 */
+			if (!!gre_spec ^ !!gre_mask) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid GRE item");
+				return -rte_errno;
+			}
+
+			if (!gre_spec && !gre_mask) {
+				filter->tunnel_type =
+				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_IPGRE;
+				break;
+			}
+
+			break;
+			
 		case RTE_FLOW_ITEM_TYPE_VF:
 			vf_spec = (const struct rte_flow_item_vf *)item->spec;
 			vf = vf_spec->id;
@@ -910,6 +953,15 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_VF:
 		act_vf = (const struct rte_flow_action_vf *)act->conf;
 		vf = act_vf->id;
+
+		if (filter->tunnel_type ==
+		    CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN ||
+		    filter->tunnel_type ==
+		     CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_IPGRE) {
+			filter->enables |= filter->tunnel_type;
+			break;
+		}
+
 		if (!BNXT_PF(bp)) {
 			rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1122,6 +1174,20 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		update_flow = true;
 	}
 
+	/* If tunnel redirection to a VF/PF is specified then only tunnel_type
+	 * is set and enable is set to the tunnel type. Issue hwrm cmd directly
+	 * in such a case.
+	 */
+	if (filter->tunnel_type && filter->enables == filter->tunnel_type) {
+		ret = bnxt_hwrm_tunnel_redirect(bp, filter->tunnel_type);
+		if (ret) {
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Unable to redirect tunnel to VF");
+			goto free_filter;
+		}
+		goto done;
+	}
 	if (filter->filter_type == HWRM_CFA_EM_FILTER) {
 		filter->enables |=
 			HWRM_CFA_EM_FLOW_ALLOC_INPUT_ENABLES_L2_FILTER_ID;
@@ -1139,6 +1205,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 			break;
 	}
 
+done:
 	if (!ret) {
 		flow->filter = filter;
 		flow->vnic = vnic;

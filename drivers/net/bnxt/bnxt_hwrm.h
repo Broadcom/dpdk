@@ -184,4 +184,5 @@ int bnxt_hwrm_func_reserve_vf_resc(struct bnxt *bp);
 int bnxt_hwrm_ext_port_qstats(struct bnxt *bp);
 int bnxt_hwrm_tunnel_dst_port_query(struct bnxt *bp, uint8_t type,
 				uint16_t *port);
+int bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type);
 #endif

@@ -3732,3 +3732,21 @@ bnxt_hwrm_tunnel_dst_port_query(struct bnxt *bp, uint8_t type, uint16_t *port)
 
 	return rc;
 }
+
+int
+bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type)
+{
+	struct hwrm_cfa_redirect_tunnel_type_alloc_input req = {0};
+	struct hwrm_cfa_redirect_tunnel_type_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_ALLOC);
+	req.tunnel_type = type;
+	req.dest_fid = bp->fw_fid;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT();
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
