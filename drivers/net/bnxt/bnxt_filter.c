@@ -38,6 +38,7 @@
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_tailq.h>
+#include <rte_cycles.h>
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
@@ -1120,6 +1121,16 @@ bnxt_match_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 	return 0;
 }
 
+/** micro seconds per second */
+#define MS_PER_SEC 1E3
+
+/** Clock cycles per nano second */
+static uint64_t
+cycles_per_ms(void)
+{
+        return rte_get_timer_hz() / MS_PER_SEC;
+}
+
 static struct rte_flow *
 bnxt_flow_create(struct rte_eth_dev *dev,
 		  const struct rte_flow_attr *attr,
@@ -1134,7 +1145,11 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow *flow;
 	unsigned int i;
 	int ret = 0;
+	uint64_t start_tsc;
+	uint64_t end_tsc;
+	uint64_t core_cycles;
 
+	start_tsc = rte_rdtsc();
 	flow = rte_zmalloc("bnxt_flow", sizeof(struct rte_flow), 0);
 	if (!flow) {
 		rte_flow_error_set(error, ENOMEM,
@@ -1180,6 +1195,11 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	 */
 	if (filter->tunnel_type && filter->enables == filter->tunnel_type) {
 		ret = bnxt_hwrm_tunnel_redirect(bp, filter->tunnel_type);
+		end_tsc = rte_rdtsc();
+		core_cycles = (end_tsc - start_tsc);
+		RTE_LOG(INFO, PMD, "%s(): Tunnel redirect took %"PRIu64
+			" core_cycles cycles_per_ms = %"PRIu64" \n",
+			 __func__, core_cycles, cycles_per_ms());
 		if (ret) {
 			rte_flow_error_set(error, -ret,
 					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,

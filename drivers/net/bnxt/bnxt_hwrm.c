@@ -3745,6 +3745,11 @@ bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type)
 	struct hwrm_cfa_redirect_tunnel_type_alloc_input req = {0};
 	struct hwrm_cfa_redirect_tunnel_type_alloc_output *resp = bp->hwrm_cmd_resp_addr;
 	int rc = 0;
+	uint64_t start_tsc;
+	uint64_t end_tsc;
+	uint64_t core_cycles;
+
+	start_tsc = rte_rdtsc();
 
 	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_ALLOC);
 	req.tunnel_type = type;
@@ -3753,6 +3758,10 @@ bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type)
 	HWRM_CHECK_RESULT();
 
 	HWRM_UNLOCK();
+	end_tsc = rte_rdtsc();
+	core_cycles = (end_tsc - start_tsc);
+	RTE_LOG(INFO, PMD, "CFA_REDIRECT_TUNNEL_TYPE_ALLOC HWRM cmd took"
+		" %"PRIu64" cycles \n", core_cycles);
 
 	return rc;
 }
