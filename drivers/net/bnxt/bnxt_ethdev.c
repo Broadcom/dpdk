@@ -2904,6 +2904,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	const struct rte_memzone *mz = NULL;
 	static int version_printed;
 	uint32_t total_alloc_len;
+	uint16_t mtu;
 	rte_iova_t mz_phys_addr;
 	struct bnxt *bp;
 	int rc;
@@ -3052,11 +3053,15 @@ skip_ext_stats:
 		goto error_free;
 	}
 
-	rc = bnxt_hwrm_func_qcfg(bp);
+	rc = bnxt_hwrm_func_qcfg(bp, &mtu);
 	if (rc) {
 		RTE_LOG(ERR, PMD, "hwrm func qcfg failed\n");
 		goto error_free;
 	}
+
+	if (mtu >= ETHER_MIN_MTU && mtu <= BNXT_MAX_MTU &&
+	    mtu != eth_dev->data->mtu)
+		eth_dev->data->mtu = mtu;
 
 	/* Get the MAX capabilities for this function */
 	rc = bnxt_hwrm_func_qcaps(bp);

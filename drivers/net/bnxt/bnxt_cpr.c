@@ -59,7 +59,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		break;
  	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_CFG_CHANGE:
  		RTE_LOG(DEBUG, PMD, "Async event: VF config changed\n");
-		bnxt_hwrm_func_qcfg(bp);
+		bnxt_hwrm_func_qcfg(bp, NULL);
  		break;
 	default:
 		RTE_LOG(DEBUG, PMD, "handle_async_event id = 0x%x\n", event_id);
