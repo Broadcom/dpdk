@@ -1270,6 +1270,18 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	struct bnxt_vnic_info *vnic = flow->vnic;
 	int ret = 0;
 
+	if (filter->filter_type == HWRM_CFA_TUNNEL_FILTER && filter->enables ==
+	    filter->tunnel_type) {
+		ret = bnxt_hwrm_tunnel_redirect_free(bp, filter->tunnel_type);
+		if (!ret)
+			rte_free(flow);
+		else
+			rte_flow_error_set(error, -ret,
+					RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					"Failed to destroy tunnel.");
+		return ret;
+	}
+
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == 0)
 		RTE_LOG(ERR, PMD, "Could not find matching flow\n");
