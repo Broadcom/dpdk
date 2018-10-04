@@ -955,20 +955,22 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		act_vf = (const struct rte_flow_action_vf *)act->conf;
 		vf = act_vf->id;
 
-		/* If it's issued on a VF, check that id == 0 */
-		if (BNXT_VF(bp) && vf) {
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   act,
-					   "Incorrect VF id!");
-			rc = -rte_errno;
-			goto ret;
-		}
-
 		if (filter->tunnel_type ==
 		    CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN ||
 		    filter->tunnel_type ==
 		     CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_IPGRE) {
+			/* If issued on a VF, ensure id is 0 and is trusted */
+			if (BNXT_VF(bp)) {
+				if (!BNXT_VF_IS_TRUSTED(bp) || vf) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						act,
+						"Incorrect VF");
+					rc = -rte_errno;
+					goto ret;
+				}
+			}
+
 			filter->enables |= filter->tunnel_type;
 			filter->filter_type = HWRM_CFA_TUNNEL_FILTER;
 			break;
