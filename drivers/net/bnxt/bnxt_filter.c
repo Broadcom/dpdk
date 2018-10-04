@@ -296,8 +296,11 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 			}
 			use_ntuple |= 1;
 			break;
+		case RTE_FLOW_ITEM_TYPE_ANY:
+			use_ntuple = 0;
+			break;
 		default:
-			RTE_LOG(ERR, PMD, "Unknown Flow type");
+			RTE_LOG(DEBUG, PMD, "Unknown Flow type");
 			use_ntuple |= 1;
 		}
 		item++;
