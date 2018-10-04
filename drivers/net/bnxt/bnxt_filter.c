@@ -960,6 +960,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		    filter->tunnel_type ==
 		     CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_IPGRE) {
 			filter->enables |= filter->tunnel_type;
+			filter->filter_type = HWRM_CFA_TUNNEL_FILTER;
 			break;
 		}
 
@@ -1193,7 +1194,8 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	 * is set and enable is set to the tunnel type. Issue hwrm cmd directly
 	 * in such a case.
 	 */
-	if (filter->tunnel_type && filter->enables == filter->tunnel_type) {
+	if (filter->filter_type == HWRM_CFA_TUNNEL_FILTER && filter->enables
+	    == filter->tunnel_type) {
 		ret = bnxt_hwrm_tunnel_redirect(bp, filter->tunnel_type);
 		end_tsc = rte_rdtsc();
 		core_cycles = (end_tsc - start_tsc);
@@ -1234,7 +1236,8 @@ done:
 			goto free_flow;
 		}
 		RTE_LOG(ERR, PMD, "Successfully created flow.\n");
-		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
+		if (vnic)
+			STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
 		return flow;
 	}
 free_filter:
