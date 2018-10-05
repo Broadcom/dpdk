@@ -47,7 +47,7 @@ struct bnxt_filter_info {
 #define HWRM_CFA_L2_FILTER	0
 #define HWRM_CFA_EM_FILTER	1
 #define HWRM_CFA_NTUPLE_FILTER	2
-#define HWRM_CFA_TUNNEL_FILTER	3
+#define HWRM_CFA_TUNNEL_REDIRECT_FILTER	3
 	uint8_t                 filter_type;
 	uint32_t                dst_id;
 

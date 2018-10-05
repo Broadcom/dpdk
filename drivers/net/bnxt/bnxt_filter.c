@@ -975,7 +975,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			}
 
 			filter->enables |= filter->tunnel_type;
-			filter->filter_type = HWRM_CFA_TUNNEL_FILTER;
+			filter->filter_type = HWRM_CFA_TUNNEL_REDIRECT_FILTER;
 			break;
 		}
 
@@ -1200,8 +1200,8 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	 * is set and enable is set to the tunnel type. Issue hwrm cmd directly
 	 * in such a case.
 	 */
-	if (filter->filter_type == HWRM_CFA_TUNNEL_FILTER && filter->enables
-	    == filter->tunnel_type) {
+	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
+	    filter->enables == filter->tunnel_type) {
 		ret = bnxt_hwrm_tunnel_redirect(bp, filter->tunnel_type);
 		end_tsc = rte_rdtsc();
 		core_cycles = (end_tsc - start_tsc);
@@ -1214,6 +1214,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 					   "Unable to redirect tunnel to VF");
 			goto free_filter;
 		}
+		vnic = &bp->vnic_info[0];
 		goto done;
 	}
 	if (filter->filter_type == HWRM_CFA_EM_FILTER) {
@@ -1242,8 +1243,7 @@ done:
 			goto free_flow;
 		}
 		RTE_LOG(ERR, PMD, "Successfully created flow.\n");
-		if (vnic)
-			STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
+		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
 		return flow;
 	}
 free_filter:
@@ -1276,8 +1276,8 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	struct bnxt_vnic_info *vnic = flow->vnic;
 	int ret = 0;
 
-	if (filter->filter_type == HWRM_CFA_TUNNEL_FILTER && filter->enables ==
-	    filter->tunnel_type) {
+	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
+	    filter->enables == filter->tunnel_type) {
 		ret = bnxt_hwrm_tunnel_redirect_free(bp, filter->tunnel_type);
 		if (!ret)
 			rte_free(flow);
@@ -1323,6 +1323,10 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
 			struct bnxt_filter_info *filter = flow->filter;
 
+			if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
+			    filter->enables == filter->tunnel_type)
+				ret = bnxt_hwrm_tunnel_redirect_free(bp,
+								     filter->tunnel_type);
 			if (filter->filter_type == HWRM_CFA_EM_FILTER)
 				ret = bnxt_hwrm_clear_em_filter(bp, filter);
 			if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
