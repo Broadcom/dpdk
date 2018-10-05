@@ -1279,13 +1279,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
 	    filter->enables == filter->tunnel_type) {
 		ret = bnxt_hwrm_tunnel_redirect_free(bp, filter->tunnel_type);
-		if (!ret)
-			rte_free(flow);
-		else
-			rte_flow_error_set(error, -ret,
-					RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-					"Failed to destroy tunnel.");
-		return ret;
+		goto done;
 	}
 
 	ret = bnxt_match_filter(bp, filter);
@@ -1297,6 +1291,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 		ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
 
 	bnxt_hwrm_clear_l2_filter(bp, filter);
+done:
 	if (!ret) {
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);
