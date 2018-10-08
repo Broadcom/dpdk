@@ -3786,3 +3786,23 @@ bnxt_hwrm_tunnel_redirect_free(struct bnxt *bp, uint8_t type)
 
 	return rc;
 }
+
+int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint8_t *type)
+{
+	struct hwrm_cfa_redirect_query_tunnel_type_input req = {0};
+	struct hwrm_cfa_redirect_query_tunnel_type_output *resp =
+							bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, CFA_REDIRECT_QUERY_TUNNEL_TYPE);
+	req.src_fid = bp->fw_fid;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT();
+
+	HWRM_UNLOCK();
+
+	if (type)
+		*type = resp->tunnel_type;
+
+	return rc;
+}

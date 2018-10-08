@@ -428,6 +428,7 @@ struct cmd_nums {
 	#define HWRM_CFA_VLAN_ANTISPOOF_QCFG              UINT32_C(0x10a)
 	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC       UINT32_C(0x10b)
 	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE        UINT32_C(0x10c)
+	#define HWRM_CFA_REDIRECT_QUERY_TUNNEL_TYPE       UINT32_C(0x112)
 	/* Experimental */
 	#define HWRM_CFA_PAIR_ALLOC                       UINT32_C(0x10d)
 	/* Experimental */
@@ -21756,6 +21757,42 @@ struct hwrm_cfa_redirect_tunnel_type_info_output {
 	 */
 	uint8_t	valid;
 } __attribute__((packed));
+
+
+/* hwrm_cfa_redirect_query_tunnel_type_input (size:192b/24B) */
+struct hwrm_cfa_redirect_query_tunnel_type_input {
+	uint16_t	req_type;
+	uint16_t	cmpl_ring;
+	uint16_t	seq_id;
+	uint16_t	target_id;
+	uint64_t	resp_addr;
+	uint16_t	src_fid;
+	uint8_t	unused_0[6];
+};
+
+/* hwrm_cfa_redirect_query_tunnel_type_output (size:128b/16B) */
+struct hwrm_cfa_redirect_query_tunnel_type_output {
+	uint16_t	error_code;
+	uint16_t	req_type;
+	uint16_t	seq_id;
+	uint16_t	resp_len;
+	uint8_t	tunnel_type;
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_NONTUNNEL 0x0UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_VXLAN     0x1UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_NVGRE     0x2UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_L2GRE     0x3UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_IPIP      0x4UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_GENEVE    0x5UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_MPLS      0x6UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_STT       0x7UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_IPGRE     0x8UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_VXLAN_V4  0x9UL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_IPGRE_V1  0xaUL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_ANYTUNNEL 0xffUL
+	#define CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_LAST     CFA_REDIRECT_QUERY_TUNNEL_TYPE_RESP_TUNNEL_TYPE_ANYTUNNEL
+	uint8_t	unused_0[6];
+	uint8_t	valid;
+};
 
 /* hwrm_vxlan_ipv4_hdr (size:128b/16B) */
 struct hwrm_vxlan_ipv4_hdr {
