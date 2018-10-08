@@ -301,7 +301,7 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 			break;
 		default:
 			RTE_LOG(DEBUG, PMD, "Unknown Flow type");
-			use_ntuple |= 1;
+			use_ntuple |= 0;
 		}
 		item++;
 	}
@@ -336,13 +336,22 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	uint32_t vf = 0;
 	int use_ntuple;
 	uint32_t en = 0;
-	int dflt_vnic;
+	int dflt_vnic, rc = 0;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
 	RTE_LOG(DEBUG, PMD, "Use NTUPLE %d\n", use_ntuple);
 	if (use_ntuple < 0)
 		return use_ntuple;
 
+	if (use_ntuple && (bp->eth_dev->data->dev_conf.rxmode.mq_mode &
+	    ETH_MQ_RX_RSS)) {
+		RTE_LOG(ERR, PMD, "Cannot create ntuple flow on RSS queues\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Cannot create flow on RSS queues");
+		rc = -rte_errno;
+		return rc;
+	}
 	filter->filter_type = use_ntuple ?
 		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_EM_FILTER;
 
@@ -878,15 +887,6 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	uint32_t vf = 0;
 	int dflt_vnic;
 	int rc;
-
-	if (bp->eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
-		RTE_LOG(ERR, PMD, "Cannot create flow on RSS queues\n");
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Cannot create flow on RSS queues");
-		rc = -rte_errno;
-		goto ret;
-	}
 
 	rc = bnxt_validate_and_parse_flow_type(bp, pattern, error, filter);
 	if (rc != 0)
