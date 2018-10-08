@@ -1298,6 +1298,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	bnxt_hwrm_clear_l2_filter(bp, filter);
 done:
 	if (!ret) {
+		bnxt_free_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);
 	} else {
