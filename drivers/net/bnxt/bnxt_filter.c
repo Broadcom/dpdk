@@ -1341,6 +1341,7 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 				return -rte_errno;
 			}
 
+			bnxt_free_filter(bp, filter);
 			STAILQ_REMOVE(&vnic->flow_list, flow,
 				      rte_flow, next);
 			rte_free(flow);
