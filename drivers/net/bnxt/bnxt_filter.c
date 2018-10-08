@@ -965,6 +965,11 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 			/* If issued on a VF, ensure id is 0 and is trusted */
 			if (BNXT_VF(bp)) {
 				if (!BNXT_VF_IS_TRUSTED(bp) || vf) {
+					if (!vf)
+						RTE_LOG(ERR, PMD, "Not a Trusted VF!\n");
+					else
+						RTE_LOG(ERR, PMD, "Incorrect VF ID, pls give 0\n");
+						
 					rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,
 						act,
