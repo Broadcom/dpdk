@@ -3128,6 +3128,10 @@ skip_ext_stats:
 	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
 		int rc;
 
+		if (!eth_dev->data->nb_rx_queues ||
+			!eth_dev->data->nb_rx_queues)
+			goto skip_reserve_vf_resc;
+
 		bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
 		bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
 
@@ -3137,6 +3141,7 @@ skip_ext_stats:
 			return -ENOSPC;
 		}
 
+skip_reserve_vf_resc:
 		/* legacy DPDK needs to get updated values */
 		rc = bnxt_hwrm_func_qcaps(bp);
 		if (rc) {
