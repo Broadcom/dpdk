@@ -186,5 +186,5 @@ int bnxt_hwrm_tunnel_dst_port_query(struct bnxt *bp, uint8_t type,
 				uint16_t *port);
 int bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type);
 int bnxt_hwrm_tunnel_redirect_free(struct bnxt *bp, uint8_t type);
-int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint8_t *type);
+int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type);
 #endif

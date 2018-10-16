@@ -3787,7 +3787,7 @@ bnxt_hwrm_tunnel_redirect_free(struct bnxt *bp, uint8_t type)
 	return rc;
 }
 
-int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint8_t *type)
+int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type)
 {
 	struct hwrm_cfa_redirect_query_tunnel_type_input req = {0};
 	struct hwrm_cfa_redirect_query_tunnel_type_output *resp =
@@ -3802,7 +3802,9 @@ int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint8_t *type)
 	HWRM_UNLOCK();
 
 	if (type)
-		*type = resp->tunnel_type;
+		*type = resp->tunnel_mask;
 
+	RTE_LOG(DEBUG, PMD, "%s(): tunnel_mask for fid: %x = %x\n",
+		__func__, bp->fw_fid, resp->tunnel_mask);
 	return rc;
 }

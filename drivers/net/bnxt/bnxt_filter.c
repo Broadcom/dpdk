@@ -1160,7 +1160,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	uint64_t start_tsc;
 	uint64_t end_tsc;
 	uint64_t core_cycles;
-	uint8_t tun_type;
+	uint32_t tun_type;
 
 	start_tsc = rte_rdtsc();
 	flow = rte_zmalloc("bnxt_flow", sizeof(struct rte_flow), 0);
@@ -1215,8 +1215,20 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 					   "Unable to query tunnel to VF");
 			goto free_filter;
 		}
-		if (tun_type == filter->tunnel_type)
-			bnxt_hwrm_tunnel_redirect_free(bp, filter->tunnel_type);
+		if (tun_type == (1U << filter->tunnel_type)) {
+			ret = bnxt_hwrm_tunnel_redirect_free(bp,
+							   filter->tunnel_type);
+			if (ret) {
+				RTE_LOG(ERR, PMD,
+					"Unable to free existing tunnel!!\n");
+				rte_flow_error_set(error, -ret,
+						   RTE_FLOW_ERROR_TYPE_HANDLE,
+						   NULL,
+						   "Unable to free preexisting "
+						   "tunnel on VF");
+				goto free_filter;
+			}
+		}
 		ret = bnxt_hwrm_tunnel_redirect(bp, filter->tunnel_type);
 		end_tsc = rte_rdtsc();
 		core_cycles = (end_tsc - start_tsc);
