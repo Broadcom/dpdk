@@ -3129,7 +3129,7 @@ skip_ext_stats:
 		int rc;
 
 		if (!eth_dev->data->nb_rx_queues ||
-			!eth_dev->data->nb_rx_queues)
+		    !eth_dev->data->nb_tx_queues)
 			goto skip_reserve_vf_resc;
 
 		bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
