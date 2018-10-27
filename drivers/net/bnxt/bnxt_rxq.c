@@ -124,6 +124,9 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -EINVAL;
 			goto err_out;
 		}
+	} else {
+		/* Non RSS/VMDQ case with multiple queues */
+		pools = RTE_MIN(bp->max_vnics, pools);
 	}
 
 	nb_q_per_grp = bp->rx_cp_nr_rings / pools;

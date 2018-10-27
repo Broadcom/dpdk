@@ -264,13 +264,14 @@ static int bnxt_init_chip(struct bnxt *bp)
 				i, rc);
 			goto err_out;
 		}
-
-		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
-		if (rc) {
-			RTE_LOG(ERR, PMD,
-				"HWRM vnic %d ctx alloc failure rc: %x\n",
-				i, rc);
-			goto err_out;
+		if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB_RSS) {
+			rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
+			if (rc) {
+				RTE_LOG(ERR, PMD,
+					"HWRM vnic %d ctx alloc failure rc: %x\n",
+					i, rc);
+				goto err_out;
+			}
 		}
 
 		/*
