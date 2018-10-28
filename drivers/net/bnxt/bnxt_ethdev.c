@@ -563,6 +563,7 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
 		int rc;
 
+		bnxt_free_cp_ring(bp, bp->def_cp_ring, 0);
 		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
 		if (rc) {
 			RTE_LOG(ERR, PMD, "HWRM resource alloc failure rc: %x\n", rc);
@@ -575,6 +576,10 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 			RTE_LOG(ERR, PMD, "hwrm func qcaps failed. rc %d\n", rc);
 			return -ENOSPC;
 		}
+
+		rc = bnxt_alloc_def_cp_ring(bp);
+		if (rc)
+			return rc;
 	}
 
 	/* Inherit new configurations */

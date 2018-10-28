@@ -1721,7 +1721,7 @@ int bnxt_free_all_hwrm_ring_grps(struct bnxt *bp)
 	return rc;
 }
 
-static void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
+void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 				unsigned int idx __rte_unused)
 {
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
