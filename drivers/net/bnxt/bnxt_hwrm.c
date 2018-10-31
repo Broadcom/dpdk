@@ -3804,7 +3804,31 @@ int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type)
 	if (type)
 		*type = resp->tunnel_mask;
 
-	RTE_LOG(DEBUG, PMD, "%s(): tunnel_mask for fid: %x = %x\n",
+	RTE_LOG(INFO, PMD, "%s(): tunnel_mask for fid: %x = %x\n",
 		__func__, bp->fw_fid, resp->tunnel_mask);
+	return rc;
+}
+
+int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
+				   uint16_t *dst_fid)
+{
+	struct hwrm_cfa_redirect_tunnel_type_info_input req = {0};
+	struct hwrm_cfa_redirect_tunnel_type_info_output *resp =
+							bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, CFA_REDIRECT_TUNNEL_TYPE_INFO);
+	req.src_fid = bp->fw_fid;
+	req.tunnel_type = tun_type;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT();
+
+	HWRM_UNLOCK();
+
+	if (dst_fid)
+		*dst_fid = resp->dest_fid;
+
+	RTE_LOG(DEBUG, PMD, "%s(): dst_fid: %x\n", __func__, resp->dest_fid);
+
 	return rc;
 }

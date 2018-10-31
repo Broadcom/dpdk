@@ -1217,7 +1217,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		}
 		if (tun_type == (1U << filter->tunnel_type)) {
 			ret = bnxt_hwrm_tunnel_redirect_free(bp,
-							   filter->tunnel_type);
+							     filter->tunnel_type);
 			if (ret) {
 				RTE_LOG(ERR, PMD,
 					"Unable to free existing tunnel!!\n");
@@ -1228,6 +1228,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 						   "tunnel on VF");
 				goto free_filter;
 			}
+			RTE_LOG(ERR, PMD, "%s(): bnxt_hwrm_tunnel_redirect_free success!\n", __func__);
 		}
 		ret = bnxt_hwrm_tunnel_redirect(bp, filter->tunnel_type);
 		end_tsc = rte_rdtsc();
@@ -1301,12 +1302,46 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct bnxt_filter_info *filter = flow->filter;
 	struct bnxt_vnic_info *vnic = flow->vnic;
+	uint16_t tun_dst_fid;
+	uint32_t tun_type;
 	int ret = 0;
 
 	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
 	    filter->enables == filter->tunnel_type) {
-		ret = bnxt_hwrm_tunnel_redirect_free(bp, filter->tunnel_type);
-		goto done;
+		ret = bnxt_hwrm_tunnel_redirect_query(bp, &tun_type);
+		if (ret) {
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Unable to query tunnel to VF");
+			return ret;
+		}
+		if (tun_type == (1U << filter->tunnel_type)) {
+			ret = bnxt_hwrm_tunnel_redirect_info(bp,
+							     filter->tunnel_type,
+							     &tun_dst_fid);
+			if (ret) {
+				rte_flow_error_set(error, -ret,
+						   RTE_FLOW_ERROR_TYPE_HANDLE,
+						   NULL,
+						   "tunnel_redirect info cmd fail");
+				return ret;
+			}
+			RTE_LOG(ERR, PMD,
+				"Pre-existing tunnel fid = %x vf->fid = %x\n",
+				 tun_dst_fid, bp->fw_fid);
+
+			/* Tunnel doesn't belong to this VF, so don't send HWRM
+			 * cmd, just delete the flow from driver
+			 */
+			if (bp->fw_fid != tun_dst_fid) {
+				RTE_LOG(ERR, PMD,
+					"Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free\n");
+				goto done;
+			}
+
+			ret = bnxt_hwrm_tunnel_redirect_free(bp,
+							     filter->tunnel_type);
+		}
 	}
 
 	ret = bnxt_match_filter(bp, filter);

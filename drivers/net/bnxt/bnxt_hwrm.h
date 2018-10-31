@@ -187,6 +187,8 @@ int bnxt_hwrm_tunnel_dst_port_query(struct bnxt *bp, uint8_t type,
 int bnxt_hwrm_tunnel_redirect(struct bnxt *bp, uint8_t type);
 int bnxt_hwrm_tunnel_redirect_free(struct bnxt *bp, uint8_t type);
 int bnxt_hwrm_tunnel_redirect_query(struct bnxt *bp, uint32_t *type);
+int bnxt_hwrm_tunnel_redirect_info(struct bnxt *bp, uint8_t tun_type,
+				   uint16_t *dst_fid);
 void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 				unsigned int idx __rte_unused);
 #endif
