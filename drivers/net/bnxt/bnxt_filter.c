@@ -1336,11 +1336,10 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 			if (bp->fw_fid != tun_dst_fid) {
 				RTE_LOG(ERR, PMD,
 					"Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free\n");
-				goto done;
+			} else {
+				ret = bnxt_hwrm_tunnel_redirect_free(bp,
+								     filter->tunnel_type);
 			}
-
-			ret = bnxt_hwrm_tunnel_redirect_free(bp,
-							     filter->tunnel_type);
 			goto done;
 		}
 	}
