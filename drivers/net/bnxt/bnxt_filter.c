@@ -1341,6 +1341,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 
 			ret = bnxt_hwrm_tunnel_redirect_free(bp,
 							     filter->tunnel_type);
+			goto done;
 		}
 	}
 
