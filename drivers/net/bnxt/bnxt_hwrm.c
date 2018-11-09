@@ -502,6 +502,9 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
 	bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
+	bp->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
+	RTE_LOG(ERR, PMD,
+		"%s(): First_vf_id = %x\n", __func__, resp->first_vf_id);
 	/* TODO: For now, do not support VMDq/RFS on VFs. */
 	if (BNXT_PF(bp)) {
 		if (bp->pf.max_vfs)

@@ -1328,20 +1328,20 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 			}
 			RTE_LOG(ERR, PMD,
 				"Pre-existing tunnel fid = %x vf->fid = %x\n",
-				 tun_dst_fid, bp->fw_fid);
+				 tun_dst_fid + bp->first_vf_id, bp->fw_fid);
 
 			/* Tunnel doesn't belong to this VF, so don't send HWRM
 			 * cmd, just delete the flow from driver
 			 */
-			if (bp->fw_fid != tun_dst_fid) {
+			if (bp->fw_fid != (tun_dst_fid + bp->first_vf_id)) {
 				RTE_LOG(ERR, PMD,
 					"Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free\n");
 			} else {
 				ret = bnxt_hwrm_tunnel_redirect_free(bp,
 								     filter->tunnel_type);
 			}
-			goto done;
 		}
+		goto done;
 	}
 
 	ret = bnxt_match_filter(bp, filter);
