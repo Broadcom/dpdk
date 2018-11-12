@@ -1294,6 +1294,48 @@ free_flow:
 	return flow;
 }
 
+static int bnxt_handle_tunnel_redirect_destroy(struct bnxt *bp,
+					       struct bnxt_filter_info *filter,
+					       struct rte_flow_error *error)
+{
+	uint16_t tun_dst_fid;
+	uint32_t tun_type;
+	int ret = 0;
+
+	ret = bnxt_hwrm_tunnel_redirect_query(bp, &tun_type);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				"Unable to query tunnel to VF");
+		return ret;
+	}
+	if (tun_type == (1U << filter->tunnel_type)) {
+		ret = bnxt_hwrm_tunnel_redirect_info(bp, filter->tunnel_type,
+						     &tun_dst_fid);
+		if (ret) {
+			rte_flow_error_set(error, -ret,
+					RTE_FLOW_ERROR_TYPE_HANDLE,
+					NULL,
+					"tunnel_redirect info cmd fail");
+			return ret;
+		}
+		RTE_LOG(INFO, PMD,
+			"Pre-existing tunnel fid = %x vf->fid = %x\n",
+			tun_dst_fid + bp->first_vf_id, bp->fw_fid);
+
+		/* Tunnel doesn't belong to this VF, so don't send HWRM
+		 * cmd, just delete the flow from driver
+		 */
+		if (bp->fw_fid != (tun_dst_fid + bp->first_vf_id))
+			RTE_LOG(ERR, PMD,
+				"Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free\n");
+		else
+			ret = bnxt_hwrm_tunnel_redirect_free(bp,
+							     filter->tunnel_type);
+	}
+	return ret;
+}
+
 static int
 bnxt_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
@@ -1302,46 +1344,15 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct bnxt_filter_info *filter = flow->filter;
 	struct bnxt_vnic_info *vnic = flow->vnic;
-	uint16_t tun_dst_fid;
-	uint32_t tun_type;
 	int ret = 0;
 
 	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
 	    filter->enables == filter->tunnel_type) {
-		ret = bnxt_hwrm_tunnel_redirect_query(bp, &tun_type);
-		if (ret) {
-			rte_flow_error_set(error, -ret,
-					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-					   "Unable to query tunnel to VF");
+		ret = bnxt_handle_tunnel_redirect_destroy(bp, filter, error);
+		if (!ret)
+			goto done;
+		else
 			return ret;
-		}
-		if (tun_type == (1U << filter->tunnel_type)) {
-			ret = bnxt_hwrm_tunnel_redirect_info(bp,
-							     filter->tunnel_type,
-							     &tun_dst_fid);
-			if (ret) {
-				rte_flow_error_set(error, -ret,
-						   RTE_FLOW_ERROR_TYPE_HANDLE,
-						   NULL,
-						   "tunnel_redirect info cmd fail");
-				return ret;
-			}
-			RTE_LOG(ERR, PMD,
-				"Pre-existing tunnel fid = %x vf->fid = %x\n",
-				 tun_dst_fid + bp->first_vf_id, bp->fw_fid);
-
-			/* Tunnel doesn't belong to this VF, so don't send HWRM
-			 * cmd, just delete the flow from driver
-			 */
-			if (bp->fw_fid != (tun_dst_fid + bp->first_vf_id)) {
-				RTE_LOG(ERR, PMD,
-					"Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free\n");
-			} else {
-				ret = bnxt_hwrm_tunnel_redirect_free(bp,
-								     filter->tunnel_type);
-			}
-		}
-		goto done;
 	}
 
 	ret = bnxt_match_filter(bp, filter);
@@ -1382,9 +1393,15 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 			struct bnxt_filter_info *filter = flow->filter;
 
 			if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
-			    filter->enables == filter->tunnel_type)
-				ret = bnxt_hwrm_tunnel_redirect_free(bp,
-								     filter->tunnel_type);
+			    filter->enables == filter->tunnel_type) {
+				ret = bnxt_handle_tunnel_redirect_destroy(bp,
+									  filter,
+									  error);
+				if (!ret)
+					goto done;
+				else
+					return ret;
+			}
 			if (filter->filter_type == HWRM_CFA_EM_FILTER)
 				ret = bnxt_hwrm_clear_em_filter(bp, filter);
 			if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
@@ -1397,7 +1414,7 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 						   "Failed to flush flow in HW.");
 				return -rte_errno;
 			}
-
+done:
 			bnxt_free_filter(bp, filter);
 			STAILQ_REMOVE(&vnic->flow_list, flow,
 				      rte_flow, next);
