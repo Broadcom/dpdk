@@ -164,6 +164,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	}
 
 	eth_dev->data->tx_queues[queue_idx] = txq;
+	txq->tx_free_thresh = BNXT_DEFAULT_TX_BURST;
 
 out:
 	return rc;

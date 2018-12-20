@@ -34,6 +34,8 @@
 #ifndef _BNXT_TXQ_H_
 #define _BNXT_TXQ_H_
 
+#define BNXT_DEFAULT_TX_BURST	64
+
 struct bnxt_tx_ring_info;
 struct bnxt_cp_ring_info;
 struct bnxt_tx_queue {
