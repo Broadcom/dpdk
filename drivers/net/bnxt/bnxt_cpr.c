@@ -185,9 +185,10 @@ void bnxt_free_def_cp_ring(struct bnxt *bp)
 	if (cpr == NULL)
 		return;
 
+	bnxt_free_cp_ring(bp, cpr);
 	bnxt_free_ring(cpr->cp_ring_struct);
-	cpr->cp_ring_struct = NULL;
 	rte_free(cpr->cp_ring_struct);
+	cpr->cp_ring_struct = NULL;
 	rte_free(cpr);
 	bp->def_cp_ring = NULL;
 }
