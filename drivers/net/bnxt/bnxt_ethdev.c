@@ -3053,6 +3053,14 @@ skip_ext_stats:
 	rc = bnxt_hwrm_ver_get(bp);
 	if (rc)
 		goto error_free;
+
+	rc = bnxt_hwrm_func_reset(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
+		rc = -1;
+		goto error_free;
+	}
+
 	rc = bnxt_hwrm_queue_qportcfg(bp);
 	if (rc) {
 		RTE_LOG(ERR, PMD, "hwrm queue qportcfg failed\n");
@@ -3181,12 +3189,6 @@ skip_reserve_vf_resc:
 		pci_dev->mem_resource[0].phys_addr,
 		pci_dev->mem_resource[0].addr);
 
-	rc = bnxt_hwrm_func_reset(bp);
-	if (rc) {
-		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
-		rc = -1;
-		goto error_free;
-	}
 
 	if (BNXT_PF(bp)) {
 		//if (bp->pf.active_vfs) {
