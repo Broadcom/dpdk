@@ -451,6 +451,8 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	if (n < count)
 		return count;
 
+	memset(xstats, 0, sizeof(*xstats) * n);
+
 	count = 0;
 	for (i = 0; i < RTE_DIM(bnxt_rx_stats_strings); i++) {
 		uint64_t *rx_stats = (uint64_t *)bp->hw_rx_port_stats;
