@@ -564,6 +564,8 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	if (BNXT_VF(bp) && (bp->flags & BNXT_FLAG_NEW_RM)) {
 		int rc;
 
+		bnxt_disable_int(bp);
+
 		bnxt_free_cp_ring(bp, bp->def_cp_ring, 0);
 		rc = bnxt_hwrm_func_reserve_vf_resc(bp);
 		if (rc) {
@@ -581,6 +583,8 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		rc = bnxt_alloc_def_cp_ring(bp);
 		if (rc)
 			return rc;
+
+		bnxt_enable_int(bp);
 	}
 
 	/* Inherit new configurations */
