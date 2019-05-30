@@ -587,6 +587,8 @@ igbuio_pci_remove(struct pci_dev *dev)
 {
 	struct rte_uio_pci_dev *udev = pci_get_drvdata(dev);
 
+	igbuio_pci_release(&udev->info, NULL);
+
 	mutex_destroy(&udev->lock);
 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
 	uio_unregister_device(&udev->info);
