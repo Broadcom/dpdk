@@ -1541,6 +1541,11 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 	struct hwrm_vnic_tpa_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_tpa_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
+		PMD_DRV_LOG(DEBUG, "Invalid vNIC ID\n");
+		return rc;
+	}
+
 	HWRM_PREP(req, VNIC_TPA_CFG);
 
 	if (enable) {
