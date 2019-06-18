@@ -2929,6 +2929,118 @@ init_err_disable:
 
 static int bnxt_dev_uninit(struct rte_eth_dev *eth_dev);
 
+static int bnxt_alloc_stats_mem(struct bnxt *bp)
+{
+	struct rte_pci_device *pci_dev = bp->pdev;
+	const struct rte_memzone *mz = NULL;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	uint32_t total_alloc_len;
+	rte_iova_t mz_phys_addr;
+
+	if (pci_dev->id.device_id == BROADCOM_DEV_ID_NS2)
+		return 0;
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
+		 "bnxt_%04x:%02x:%02x:%02x-%s", pci_dev->addr.domain,
+		 pci_dev->addr.bus, pci_dev->addr.devid,
+		 pci_dev->addr.function, "rx_port_stats");
+	mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
+	mz = rte_memzone_lookup(mz_name);
+	total_alloc_len = RTE_CACHE_LINE_ROUNDUP
+				(sizeof(struct rx_port_stats) +
+				 sizeof(struct rx_port_stats_ext) +
+				 512);
+	if (!mz) {
+		mz = rte_memzone_reserve(mz_name, total_alloc_len,
+					 SOCKET_ID_ANY,
+					 RTE_MEMZONE_2MB |
+					 RTE_MEMZONE_SIZE_HINT_ONLY);
+		if (!mz)
+			return -ENOMEM;
+	}
+	memset(mz->addr, 0, mz->len);
+	mz_phys_addr = mz->iova;
+	if ((unsigned long)mz->addr == mz_phys_addr) {
+		RTE_LOG(WARNING, PMD,
+			"Memzone physical address same as virtual.\n");
+		RTE_LOG(WARNING, PMD,
+			"Using rte_mem_virt2iova()\n");
+		mz_phys_addr = rte_mem_virt2iova(mz->addr);
+		if (mz_phys_addr == 0) {
+			RTE_LOG(ERR, PMD,
+				"unable to map address to physical memory\n");
+			return -ENOMEM;
+		}
+	}
+
+	bp->rx_mem_zone = (const void *)mz;
+	bp->hw_rx_port_stats = mz->addr;
+	bp->hw_rx_port_stats_map = mz_phys_addr;
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
+		 "bnxt_%04x:%02x:%02x:%02x-%s", pci_dev->addr.domain,
+		 pci_dev->addr.bus, pci_dev->addr.devid,
+		 pci_dev->addr.function, "tx_port_stats");
+	mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
+	mz = rte_memzone_lookup(mz_name);
+	total_alloc_len = RTE_CACHE_LINE_ROUNDUP
+				(sizeof(struct tx_port_stats) +
+				 sizeof(struct tx_port_stats_ext) +
+				 512);
+	if (!mz) {
+		mz = rte_memzone_reserve(mz_name, total_alloc_len,
+					 SOCKET_ID_ANY,
+					 RTE_MEMZONE_2MB |
+					 RTE_MEMZONE_SIZE_HINT_ONLY);
+		if (!mz)
+			return -ENOMEM;
+	}
+	memset(mz->addr, 0, mz->len);
+	mz_phys_addr = mz->iova;
+	if ((unsigned long)mz->addr == mz_phys_addr) {
+		RTE_LOG(WARNING, PMD,
+			"Memzone physical address same as virtual.\n");
+		RTE_LOG(WARNING, PMD,
+			"Using rte_mem_virt2iova()\n");
+		mz_phys_addr = rte_mem_virt2iova(mz->addr);
+		if (mz_phys_addr == 0) {
+			RTE_LOG(ERR, PMD,
+				"unable to map address to physical memory\n");
+			return -ENOMEM;
+		}
+	}
+
+	bp->tx_mem_zone = (const void *)mz;
+	bp->hw_tx_port_stats = mz->addr;
+	bp->hw_tx_port_stats_map = mz_phys_addr;
+
+	bp->flags |= BNXT_FLAG_PORT_STATS;
+
+	/* Display extended statistics if FW supports it */
+	if (bp->hwrm_spec_code < HWRM_SPEC_CODE_1_8_4 ||
+	    bp->hwrm_spec_code == HWRM_SPEC_CODE_1_9_0)
+		return 0;
+
+	bp->hw_rx_port_stats_ext = (void *)
+		((uint8_t *)bp->hw_rx_port_stats +
+		 sizeof(struct rx_port_stats));
+	bp->hw_rx_port_stats_ext_map = bp->hw_rx_port_stats_map +
+		sizeof(struct rx_port_stats);
+	bp->flags |= BNXT_FLAG_EXT_RX_PORT_STATS;
+
+	if (bp->hwrm_spec_code < HWRM_SPEC_CODE_1_9_2) {
+		bp->hw_tx_port_stats_ext = (void *)
+			((uint8_t *)bp->hw_tx_port_stats +
+			 sizeof(struct tx_port_stats));
+		bp->hw_tx_port_stats_ext_map =
+			bp->hw_tx_port_stats_map +
+			sizeof(struct tx_port_stats);
+		bp->flags |= BNXT_FLAG_EXT_TX_PORT_STATS;
+	}
+
+	return 0;
+}
+
 #define ALLOW_FUNC(x)	\
 	{ \
 		typeof(x) arg = (x); \
@@ -2939,12 +3051,8 @@ static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	char mz_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz = NULL;
 	static int version_printed;
-	uint32_t total_alloc_len;
 	uint16_t mtu;
-	rte_iova_t mz_phys_addr;
 	struct bnxt *bp;
 	int rc;
 
@@ -2977,108 +3085,6 @@ skip_init:
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	if (pci_dev->id.device_id != BROADCOM_DEV_ID_NS2) {
-		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
-			 "bnxt_%04x:%02x:%02x:%02x-%s", pci_dev->addr.domain,
-			 pci_dev->addr.bus, pci_dev->addr.devid,
-			 pci_dev->addr.function, "rx_port_stats");
-		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
-		mz = rte_memzone_lookup(mz_name);
- 		total_alloc_len = RTE_CACHE_LINE_ROUNDUP
-					(sizeof(struct rx_port_stats) +
-					 sizeof(struct rx_port_stats_ext) +
-					 512);
-		if (!mz) {
-			mz = rte_memzone_reserve(mz_name, total_alloc_len,
-						 SOCKET_ID_ANY,
-						 RTE_MEMZONE_2MB |
-						 RTE_MEMZONE_SIZE_HINT_ONLY);
-			if (mz == NULL)
-				return -ENOMEM;
-		}
-		memset(mz->addr, 0, mz->len);
-		mz_phys_addr = mz->iova;
-		if ((unsigned long)mz->addr == mz_phys_addr) {
-			RTE_LOG(WARNING, PMD,
-				"Memzone physical address same as virtual.\n");
-			RTE_LOG(WARNING, PMD,
-				"Using rte_mem_virt2iova()\n");
-			mz_phys_addr = rte_mem_virt2iova(mz->addr);
-			if (mz_phys_addr == 0) {
-				RTE_LOG(ERR, PMD,
-				"unable to map address to physical memory\n");
-				return -ENOMEM;
-			}
-		}
-
-		bp->rx_mem_zone = (const void *)mz;
-		bp->hw_rx_port_stats = mz->addr;
-		bp->hw_rx_port_stats_map = mz_phys_addr;
-
-		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
-			 "bnxt_%04x:%02x:%02x:%02x-%s", pci_dev->addr.domain,
-			 pci_dev->addr.bus, pci_dev->addr.devid,
-			 pci_dev->addr.function, "tx_port_stats");
-		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
-		mz = rte_memzone_lookup(mz_name);
- 		total_alloc_len = RTE_CACHE_LINE_ROUNDUP
-					(sizeof(struct tx_port_stats) +
-					 sizeof(struct tx_port_stats_ext) +
-					 512);
-		if (!mz) {
-			mz = rte_memzone_reserve(mz_name, total_alloc_len,
-						 SOCKET_ID_ANY,
-						 RTE_MEMZONE_2MB |
-						 RTE_MEMZONE_SIZE_HINT_ONLY);
-			if (mz == NULL)
-				return -ENOMEM;
-		}
-		memset(mz->addr, 0, mz->len);
-		mz_phys_addr = mz->iova;
-		if ((unsigned long)mz->addr == mz_phys_addr) {
-			RTE_LOG(WARNING, PMD,
-				"Memzone physical address same as virtual.\n");
-			RTE_LOG(WARNING, PMD,
-				"Using rte_mem_virt2iova()\n");
-			mz_phys_addr = rte_mem_virt2iova(mz->addr);
-			if (mz_phys_addr == 0) {
-				RTE_LOG(ERR, PMD,
-				"unable to map address to physical memory\n");
-				return -ENOMEM;
-			}
-		}
-
-		bp->tx_mem_zone = (const void *)mz;
-		bp->hw_tx_port_stats = mz->addr;
-		bp->hw_tx_port_stats_map = mz_phys_addr;
-
-		bp->flags |= BNXT_FLAG_PORT_STATS;
-
-		/* Display extended statistics if FW supports it */
-		if (bp->hwrm_spec_code < HWRM_SPEC_CODE_1_8_4 ||
-		    bp->hwrm_spec_code == HWRM_SPEC_CODE_1_9_0)
-			goto skip_ext_stats;
-
-		bp->hw_rx_port_stats_ext = (void *)
-			((uint8_t *)bp->hw_rx_port_stats +
-			 sizeof(struct rx_port_stats));
-		bp->hw_rx_port_stats_ext_map = bp->hw_rx_port_stats_map +
-			sizeof(struct rx_port_stats);
-		bp->flags |= BNXT_FLAG_EXT_RX_PORT_STATS;
-
-
-		if (bp->hwrm_spec_code < HWRM_SPEC_CODE_1_9_2) {
-			bp->hw_tx_port_stats_ext = (void *)
-				((uint8_t *)bp->hw_tx_port_stats +
-				 sizeof(struct tx_port_stats));
-			bp->hw_tx_port_stats_ext_map =
-				bp->hw_tx_port_stats_map +
-				sizeof(struct tx_port_stats);
-			bp->flags |= BNXT_FLAG_EXT_TX_PORT_STATS;
-		}
-	}
-
-skip_ext_stats:
 	rc = bnxt_alloc_hwrm_resources(bp);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
@@ -3088,6 +3094,11 @@ skip_ext_stats:
 	rc = bnxt_hwrm_ver_get(bp);
 	if (rc)
 		goto error_free;
+	rc = bnxt_alloc_stats_mem(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "Failed to allocate stats mem: %x\n", rc);
+		goto error_free;
+	}
 	rc = bnxt_hwrm_queue_qportcfg(bp);
 	if (rc) {
 		RTE_LOG(ERR, PMD, "hwrm queue qportcfg failed\n");
