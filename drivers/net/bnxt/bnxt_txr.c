@@ -171,9 +171,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 	/* Check if number of Tx descriptors is above HW limit */
 	if (unlikely(tx_buf->nr_bds > BNXT_MAX_TSO_SEGS)) {
-		PMD_DRV_LOG(ERR,
-			    "Num descriptors %d exceeds HW limit\n",
-			    tx_buf->nr_bds);
+		RTE_LOG_DP(ERR, PMD,
+			   "Num descriptors %d exceeds HW limit\n",
+			   tx_buf->nr_bds);
 		return -ENOSPC;
 	}
 
@@ -183,9 +183,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		char *seg = rte_pktmbuf_append(tx_pkt, pad);
 
 		if (!seg) {
-			PMD_DRV_LOG(ERR,
-				    "Failed to pad mbuf by %d bytes\n",
-				    pad);
+			RTE_LOG_DP(ERR, PMD,
+				   "Failed to pad mbuf by %d bytes\n",
+				   pad);
 			return -ENOMEM;
 		}
 
