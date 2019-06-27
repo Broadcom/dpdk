@@ -383,13 +383,14 @@ static int bnxt_init_chip(struct bnxt *bp)
 		goto err_out;
 	}
 
-	if (!bp->link_info.link_up) {
-		rc = bnxt_set_hwrm_link_config(bp, true);
-		if (rc) {
-			RTE_LOG(ERR, PMD,
-				"HWRM link config failure rc: %x\n", rc);
-			goto err_out;
-		}
+	/* Always configure the link during open as we might have
+	 * reset the phy during device stop.
+	 */
+	rc = bnxt_set_hwrm_link_config(bp, true);
+	if (rc) {
+		RTE_LOG(ERR, PMD,
+			"HWRM link config failure rc: %x\n", rc);
+		goto err_out;
 	}
 	bnxt_print_link_info(bp->eth_dev);
 
@@ -658,9 +659,6 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	/* Set IPV4 + UDP RSS Hash by default */
 	bp->flags |= BNXT_FLAG_UPDATE_HASH;
 	bp->rss_conf.rss_hf |= ETH_RSS_IP | ETH_RSS_UDP;
-	/* Set Link Speed to 25G by default */
-	bp->eth_dev->data->dev_conf.link_speeds = ETH_LINK_SPEED_25G |
-						ETH_LINK_SPEED_FIXED;
 
 	bp->dev_stopped = 0;
 
