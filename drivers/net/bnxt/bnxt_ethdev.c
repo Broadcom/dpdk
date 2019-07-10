@@ -1522,6 +1522,9 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev, struct ether_addr *addr)
 	struct bnxt_filter_info *filter;
 	int rc;
 
+	if (vnic == NULL)
+		return;
+
 	memcpy(bp->mac_addr, addr, sizeof(bp->mac_addr));
 	memcpy(&dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
 
