@@ -2245,7 +2245,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	struct bnxt_link_info link_req;
 	uint16_t speed, autoneg;
 
-	if (BNXT_NPAR_PF(bp) || BNXT_VF(bp))
+	if (!BNXT_SINGLE_PF(bp))
 		return 0;
 
 	rc = bnxt_valid_link_speed(dev_conf->link_speeds,
@@ -2324,6 +2324,9 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	/* Hard Coded.. 0xfff VLAN ID mask */
 	bp->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
 	flags = rte_le_to_cpu_16(resp->flags);
+        if (BNXT_PF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_HOST))
+                bp->flags |= BNXT_FLAG_MULTI_HOST;
+
 	if (BNXT_VF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_TRUSTED_VF)) {
 		bp->flags |= BNXT_FLAG_TRUSTED_VF_EN;
 		RTE_LOG(INFO, PMD, "Trusted VF cap enabled\n");
