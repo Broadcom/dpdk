@@ -36,6 +36,12 @@
 
 #include <rte_ether.h>
 
+#define bnxt_vlan_filter_exists(bp, filter, chk, vlan_id)	\
+		(((filter)->enables & (chk)) &&			\
+		 ((filter)->l2_ivlan == (vlan_id) &&		\
+		  (filter)->l2_ivlan_mask == 0x0FFF) &&		\
+		 !memcmp((filter)->l2_addr, (bp)->mac_addr,	\
+			 ETHER_ADDR_LEN))
 struct bnxt;
 struct bnxt_filter_info {
 	STAILQ_ENTRY(bnxt_filter_info)	next;

@@ -94,6 +94,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto err_out;
 		}
+		filter->mac_index = 0;
 		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 		goto out;
 	}
@@ -171,6 +172,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto err_out;
 		}
+		filter->mac_index = 0;
 		/*
 		 * TODO: Configure & associate CFA rule for
 		 * each VNIC for each VMDq with MACVLAN, MACVLAN+TC
