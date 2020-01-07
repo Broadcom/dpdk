@@ -1486,10 +1486,8 @@ static int bnxt_del_dflt_mac_filter(struct bnxt *bp,
 }
 
 static int
-bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
+bnxt_config_vlan_hw_filter(struct bnxt *bp, uint64_t rx_offloads)
 {
-	struct bnxt *bp = dev->data->dev_private;
-	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	struct bnxt_vnic_info *vnic;
 	unsigned int i;
 	int rc;
@@ -1519,6 +1517,24 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 	}
 	RTE_LOG(DEBUG, PMD, "VLAN Filtering: %d\n",
 		!!(rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER));
+
+	return 0;
+}
+
+static int
+bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
+{
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	struct bnxt *bp = dev->data->dev_private;
+	unsigned int i;
+	int rc;
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		/* Enable or disable VLAN filtering */
+		rc = bnxt_config_vlan_hw_filter(bp, rx_offloads);
+		if (rc)
+			return rc;
+	}
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
