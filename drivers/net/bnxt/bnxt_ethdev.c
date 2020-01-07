@@ -894,6 +894,10 @@ static void bnxt_promiscuous_enable_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic;
 
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return;
+
 	if (bp->vnic_info == NULL)
 		return;
 
@@ -907,6 +911,10 @@ static void bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic;
+
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return;
 
 	if (bp->vnic_info == NULL)
 		return;
@@ -922,6 +930,10 @@ static void bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic;
 
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return;
+
 	if (bp->vnic_info == NULL)
 		return;
 
@@ -935,6 +947,10 @@ static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic;
+
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return;
 
 	if (bp->vnic_info == NULL)
 		return;
@@ -1528,6 +1544,10 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 	struct bnxt *bp = dev->data->dev_private;
 	unsigned int i;
 	int rc;
+
+	/* Filter settings will get applied when port is started */
+	if (bp->dev_stopped == 1)
+		return 0;
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		/* Enable or disable VLAN filtering */
