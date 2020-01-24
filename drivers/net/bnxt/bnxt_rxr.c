@@ -1,4 +1,4 @@
-/*-
+/*
  *   BSD LICENSE
  *
  *   Copyright(c) Broadcom Limited.
@@ -380,6 +380,19 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 	return pkt_type;
 }
 
+static void bnxt_set_mark_in_mbuf(struct rx_pkt_cmpl_hi *rxcmp1,
+				  struct rte_mbuf *mbuf)
+{
+	uint32_t cfa_code = 0;
+
+	cfa_code = rte_le_to_cpu_16(rxcmp1->cfa_code);
+	if (!cfa_code)
+		return;
+
+	mbuf->hash.fdir.id = cfa_code;
+	mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+}
+
 static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 			    struct bnxt_rx_queue *rxq, uint32_t *raw_cons)
 {
@@ -397,6 +410,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	int rc = 0;
 	uint8_t agg_buf = 0;
 	uint16_t cmp_type;
+	uint32_t flags2_f = 0;
 	struct rx_prod_pkt_bd *rxbd;
 	struct bnxt_sw_rx_bd *rx_buf;
 	struct rte_mbuf *data;
@@ -460,13 +474,13 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
 	mbuf->ol_flags = 0;
+
 	if (rxcmp->flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
 		mbuf->hash.rss = rxcmp->rss_hash;
 		mbuf->ol_flags |= PKT_RX_RSS_HASH;
-	} else {
-		mbuf->hash.fdir.id = rxcmp1->cfa_code;
-		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 	}
+
+	bnxt_set_mark_in_mbuf(rxcmp1, mbuf);
 
 	if (agg_buf)
 		bnxt_rx_pages(rxq, mbuf, &tmp_raw_cons, agg_buf);
@@ -479,21 +493,48 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		mbuf->ol_flags |= PKT_RX_VLAN;
 	}
 
-	if (likely(RX_CMP_IP_CS_OK(rxcmp1)))
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-	else if (likely(RX_CMP_IP_CS_UNKNOWN(rxcmp1)))
+	flags2_f = flags2_0xf(rxcmp1);
+	/* IP Checksum */
+	if (likely(IS_IP_NONTUNNEL_PKT(flags2_f))) {
+		if (unlikely(RX_CMP_IP_CS_ERROR(rxcmp1)))
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		else
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+	} else if (IS_IP_TUNNEL_PKT(flags2_f)) {
+		if (unlikely(RX_CMP_IP_OUTER_CS_ERROR(rxcmp1) ||
+			     RX_CMP_IP_CS_ERROR(rxcmp1)))
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		else
+			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+	} else if (unlikely(RX_CMP_IP_CS_UNKNOWN(rxcmp1))) {
 		mbuf->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
-	else
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+	}
 
-	if (likely(RX_CMP_L4_CS_OK(rxcmp1)))
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-	else if (likely(RX_CMP_L4_CS_UNKNOWN(rxcmp1)))
+	/* L4 Checksum */
+	if (likely(IS_L4_NONTUNNEL_PKT(flags2_f))) {
+		if (unlikely(RX_CMP_L4_INNER_CS_ERR2(rxcmp1)))
+			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		else
+			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+	} else if (IS_L4_TUNNEL_PKT(flags2_f)) {
+		if (unlikely(RX_CMP_L4_INNER_CS_ERR2(rxcmp1)))
+			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		else
+			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		if (unlikely(RX_CMP_L4_OUTER_CS_ERR2(rxcmp1))) {
+			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		} else if (unlikely(IS_L4_TUNNEL_PKT_ONLY_INNER_L4_CS
+				    (flags2_f))) {
+			mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+		} else {
+			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		}
+	} else if (unlikely(RX_CMP_L4_CS_UNKNOWN(rxcmp1))) {
 		mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
-	else
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+	}
 
 	mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
+
 
 #ifdef BNXT_DEBUG
 	if (rxcmp1->errors_v2 & RX_CMP_L2_ERRORS) {
