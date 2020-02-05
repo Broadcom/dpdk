@@ -380,7 +380,8 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 	return pkt_type;
 }
 
-static void bnxt_set_mark_in_mbuf(struct rx_pkt_cmpl_hi *rxcmp1,
+static void bnxt_set_mark_in_mbuf(struct bnxt *bp,
+				  struct rx_pkt_cmpl_hi *rxcmp1,
 				  struct rte_mbuf *mbuf)
 {
 	uint32_t cfa_code = 0;
@@ -388,6 +389,10 @@ static void bnxt_set_mark_in_mbuf(struct rx_pkt_cmpl_hi *rxcmp1,
 	cfa_code = rte_le_to_cpu_16(rxcmp1->cfa_code);
 	if (!cfa_code)
 		return;
+
+	if (cfa_code && !bp->mark_table[cfa_code].valid) {
+		return;
+	}
 
 	mbuf->hash.fdir.id = cfa_code;
 	mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
@@ -480,7 +485,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		mbuf->ol_flags |= PKT_RX_RSS_HASH;
 	}
 
-	bnxt_set_mark_in_mbuf(rxcmp1, mbuf);
+	bnxt_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf);
 
 	if (agg_buf)
 		bnxt_rx_pages(rxq, mbuf, &tmp_raw_cons, agg_buf);

@@ -194,6 +194,11 @@ struct rte_flow {
 	struct bnxt_vnic_info	*vnic;
 };
 
+struct bnxt_mark_info {
+	uint32_t	mark_id;
+	bool		valid;
+};
+
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
 	void				*bar0;
@@ -308,6 +313,9 @@ struct bnxt {
 #define BNXT_VF_RESV_STRATEGY_MINIMAL	1
 #define BNXT_VF_RESV_STRATEGY_MINIMAL_STATIC	2
 	uint16_t		vf_resv_strategy;
+#define BNXT_MARK_TABLE_SZ	(sizeof(struct bnxt_mark_info)  * 64 * 1024)
+#define BNXT_FLOW_ID_MASK       0x0000ffff
+	struct bnxt_mark_info	*mark_table;
 };
 
 #define BNXT_NA_SIGNATURE_UINT64		((uint64_t)(-1))

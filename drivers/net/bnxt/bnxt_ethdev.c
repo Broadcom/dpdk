@@ -394,6 +394,10 @@ static int bnxt_init_chip(struct bnxt *bp)
 	}
 	bnxt_print_link_info(bp->eth_dev);
 
+	bp->mark_table = rte_zmalloc("bnxt_mark_table", BNXT_MARK_TABLE_SZ, 0);
+	if (!bp->mark_table)
+		RTE_LOG(ERR, PMD, "Allocation of mark table failed\n");
+
 	return 0;
 
 err_out:
@@ -725,6 +729,8 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_hwrm_port_clr_stats(bp);
 	bnxt_shutdown_nic(bp);
 	bp->dev_stopped = 1;
+	rte_free(bp->mark_table);
+	bp->mark_table = NULL;
 }
 
 static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)

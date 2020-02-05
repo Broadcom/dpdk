@@ -1161,7 +1161,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	uint64_t start_tsc;
 	uint64_t end_tsc;
 	uint64_t core_cycles;
-	uint32_t tun_type;
+	uint32_t tun_type, flow_id;
 
 	start_tsc = rte_rdtsc();
 	flow = rte_zmalloc("bnxt_flow", sizeof(struct rte_flow), 0);
@@ -1272,6 +1272,16 @@ done:
 			goto free_flow;
 		}
 		RTE_LOG(ERR, PMD, "Successfully created flow.\n");
+		flow_id = filter->flow_id & BNXT_FLOW_ID_MASK;
+		if (flow_id) {
+			if (bp->mark_table[flow_id].valid) {
+				RTE_LOG(ERR, PMD,
+					"Entry for flow id occupied 0x%x\n",
+					filter->flow_id);
+				goto free_filter;
+			}
+			bp->mark_table[flow_id].valid = true;
+		}
 		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
 		return flow;
 	}

@@ -45,6 +45,7 @@
 struct bnxt;
 struct bnxt_filter_info {
 	STAILQ_ENTRY(bnxt_filter_info)	next;
+	uint32_t		flow_id;
 	uint64_t		fw_l2_filter_id;
 	uint64_t		fw_em_filter_id;
 	uint64_t		fw_ntuple_filter_id;
