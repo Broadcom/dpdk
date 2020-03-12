@@ -231,6 +231,7 @@ nic_stats_display(portid_t port_id)
 void
 nic_stats_clear(portid_t port_id)
 {
+	struct rte_port *port = &ports[port_id];
 	portid_t pid;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
@@ -241,6 +242,7 @@ nic_stats_clear(portid_t port_id)
 		return;
 	}
 	rte_eth_stats_reset(port_id);
+	memset(&port->stats, 0, sizeof(struct rte_eth_stats));
 	printf("\n  NIC statistics for port %d cleared\n", port_id);
 }
 
