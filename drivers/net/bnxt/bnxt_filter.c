@@ -1355,6 +1355,7 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct bnxt_filter_info *filter = flow->filter;
 	struct bnxt_vnic_info *vnic = flow->vnic;
+	uint32_t flow_id;
 	int ret = 0;
 
 	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
@@ -1377,6 +1378,9 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	bnxt_hwrm_clear_l2_filter(bp, filter);
 done:
 	if (!ret) {
+		flow_id = filter->flow_id & BNXT_FLOW_ID_MASK;
+		if (flow_id)
+                        bp->mark_table[flow_id].valid = false;
 		bnxt_free_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);
@@ -1395,6 +1399,7 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct bnxt_vnic_info *vnic;
 	struct rte_flow *flow;
+	uint32_t flow_id;
 	unsigned int i;
 	int ret = 0;
 
@@ -1426,6 +1431,9 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 				return -rte_errno;
 			}
 done:
+			flow_id = filter->flow_id & BNXT_FLOW_ID_MASK;
+			if (flow_id)
+				bp->mark_table[flow_id].valid = false;
 			bnxt_free_filter(bp, filter);
 			STAILQ_REMOVE(&vnic->flow_list, flow,
 				      rte_flow, next);
